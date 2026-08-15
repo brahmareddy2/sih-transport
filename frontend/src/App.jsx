@@ -103,31 +103,31 @@ function DashboardLayout({ title, roleLabel, children }) {
 
           {/* Primary Navigation Links */}
           <Link to="/home" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            🏠 Home
+            {t('nav_home', '🏠 Home')}
           </Link>
           <Link to="/driver-mode" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#10b98122', color: '#10b981', border: '1px solid #10b98144' }}>
-            🚛 Driver
+            {t('nav_driver', '🚛 Driver')}
           </Link>
           <Link to="/operator" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            🛰️ Optimization
+            {t('nav_optimization', '🛰️ Optimization')}
           </Link>
           <Link to="/tracking" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            📍 GPS
+            {t('nav_gps', '📍 Live GPS')}
           </Link>
           <Link to="/incidents" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            🚨 Incidents
+            {t('nav_incidents', '🚨 Incidents')}
           </Link>
           <Link to="/return-cargo" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            🔄 Return Cargo
+            {t('nav_return_cargo', '🔄 Return Cargo')}
           </Link>
           <Link to="/ml" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            📊 AI/ML
+            {t('nav_ml', '📊 AI/ML')}
           </Link>
           <Link to="/what-if" className="btn btn-primary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#4f46e5' }}>
-            ⚡ What-If
+            {t('nav_what_if', '⚡ What-If')}
           </Link>
           <Link to="/analytics" className="btn btn-primary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#059669' }}>
-            📈 Analytics
+            {t('nav_analytics', '📈 Analytics')}
           </Link>
 
           {unreadCount > 0 && (

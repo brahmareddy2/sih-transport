@@ -18,6 +18,120 @@ export const LANGUAGES = [
 ]
 
 export const DICTIONARY = {
+  // Navigation & Top Bar
+  app_title: {
+    en: 'Logistics DSS',
+    te: 'లాజిస్టిక్స్ డీఎస్ఎస్',
+    hi: 'लॉजिस्टिक्स डीएसएस',
+    pa: 'ਲਾਜਿਸਟਿਕਸ ਡੀਐਸਐਸ',
+    mr: 'लॉजिस्टिक्स डीएसएस',
+  },
+  nav_home: {
+    en: '🏠 Home',
+    te: '🏠 హోమ్',
+    hi: '🏠 होम',
+    pa: '🏠 ਹੋਮ',
+    mr: '🏠 होम',
+  },
+  nav_driver: {
+    en: '🚛 Driver',
+    te: '🚛 డ్రైవర్',
+    hi: '🚛 ड्राइवर',
+    pa: '🚛 ਡਰਾਈਵਰ',
+    mr: '🚛 ड्रायव्हर',
+  },
+  nav_optimization: {
+    en: '🛰️ Optimization',
+    te: '🛰️ ఆప్టిమైజేషన్',
+    hi: '🛰️ रूट अनुकूलन',
+    pa: '🛰️ ਰੂਟ ਅਨੁਕੂਲਨ',
+    mr: '🛰️ ऑप्टिमायझेशन',
+  },
+  nav_gps: {
+    en: '📍 Live GPS',
+    te: '📍 లైవ్ జీపీఎస్',
+    hi: '📍 लाइव जीपीएस',
+    pa: '📍 ਲਾਈਵ ਜੀਪੀਐਸ',
+    mr: '📍 लाइव्ह जीपीएस',
+  },
+  nav_incidents: {
+    en: '🚨 Incidents',
+    te: '🚨 ఇన్సిడెంట్స్',
+    hi: '🚨 घटनाएं',
+    pa: '🚨 ਘਟਨਾਵਾਂ',
+    mr: '🚨 आपत्कालीन घटना',
+  },
+  nav_return_cargo: {
+    en: '🔄 Return Cargo',
+    te: '🔄 తిరుగు సరుకు',
+    hi: '🔄 वापसी लोड',
+    pa: '🔄 ਵਾਪਸੀ ਲੋਡ',
+    mr: '🔄 परतीचा माल',
+  },
+  nav_ml: {
+    en: '📊 AI/ML',
+    te: '📊 ఏఐ మోడల్స్',
+    hi: '📊 एआई/एमएल',
+    pa: '📊 ਏਆਈ/ਐਮਐਲ',
+    mr: '📊 एआय मॉडेल्स',
+  },
+  nav_what_if: {
+    en: '⚡ What-If',
+    te: '⚡ వాట్-ఇఫ్',
+    hi: '⚡ वॉट-इफ',
+    pa: '⚡ ਵੌਟ-ਇਫ',
+    mr: '⚡ व्हॉट-इफ',
+  },
+  nav_analytics: {
+    en: '📈 Analytics',
+    te: '📈 అనలిటిక్స్',
+    hi: '📈 एनालिटिक्स',
+    pa: '📈 ਵਿਸ਼ਲੇਸ਼ਣ',
+    mr: '📈 विश्लेषण',
+  },
+  voice_assistant: {
+    en: 'Voice Assistant',
+    te: 'వాయిస్ అసిస్టెంట్',
+    hi: 'वॉयस असिस्टेंट',
+    pa: 'ਵੌਇਸ ਅਸਿਸਟੈਂਟ',
+    mr: 'व्हॉइस असिस्टंट',
+  },
+  speak: {
+    en: 'Speak',
+    te: 'మాట్లాడండి',
+    hi: 'बोलें',
+    pa: 'ਬੋਲੋ',
+    mr: 'बोला',
+  },
+  ask_anything: {
+    en: 'Ask anything...',
+    te: 'ఏదైనా అడగండి...',
+    hi: 'कुछ भी पूछें...',
+    pa: 'ਕੁਝ ਵੀ ਪੁੱਛੋ...',
+    mr: 'काहीही विचारा...',
+  },
+  simple_mode: {
+    en: 'Simple Mode',
+    te: 'సరళ మోడ్',
+    hi: 'सरल मोड',
+    pa: 'ਸਧਾਰਨ ਮੋਡ',
+    mr: 'सोपा मोड',
+  },
+  normal_mode: {
+    en: 'Enterprise Mode',
+    te: 'ఎంటర్‌ప్రైజ్ మోడ్',
+    hi: 'एंटरप्राइज मोड',
+    pa: 'ਐਂਟਰਪ੍ਰਾਈਜ਼ ਮੋਡ',
+    mr: 'एंटरप्राइज मोड',
+  },
+  sign_out: {
+    en: 'Sign Out',
+    te: 'లాగ్ అవుట్',
+    hi: 'साइन आउट',
+    pa: 'ਸਾਈਨ ਆਉਟ',
+    mr: 'साइन आउट',
+  },
+
   // Login Page Translations
   select_language_title: {
     en: '🌐 Choose Your Preferred Language',
@@ -90,65 +204,14 @@ export const DICTIONARY = {
     mr: 'साइन इन / लॉगिन ➔',
   },
 
-  // Role descriptions
+  // Role labels
   role_admin: { en: 'Admin', te: 'అడ్మిన్', hi: 'एडमिन', pa: 'ਐਡਮਿਨ', mr: 'अ‍ॅडमिन' },
   role_operator: { en: 'Operator', te: 'ఆపరేటర్', hi: 'ऑपरेटर', pa: 'ਆਪਰੇਟਰ', mr: 'ऑपरेटर' },
   role_fleet: { en: 'Fleet Mgr', te: 'ఫ్లీట్ మేనేజర్', hi: 'फ्लीट मैनेजर', pa: 'ਫਲੀਟ ਮੈਨੇਜਰ', mr: 'फ्लीट मॅनेजर' },
   role_driver: { en: 'Driver', te: 'డ్రైవర్', hi: 'ड्राइवर', pa: 'ਡਰਾਈਵਰ', mr: 'ड्रायव्हर' },
   role_customer: { en: 'Enterprise Customer', te: 'ఎంటర్‌ప్రైజ్ కస్టమర్', hi: 'एंटरप्राइज कस्टमर', pa: 'ਐਂਟਰਪ੍ਰਾਈਜ਼ ਗਾਹਕ', mr: 'एंटरप्राइज ग्राहक' },
 
-  // Navigation & Header
-  app_title: {
-    en: 'Logistics DSS',
-    te: 'లాజిస్టిక్స్ డీఎస్ఎస్',
-    hi: 'लॉजिस्टिक्स डीएसएस',
-    pa: 'ਲਾਜਿਸਟਿਕਸ ਡੀਐਸਐਸ',
-    mr: 'लॉजिस्टिक्स डीएसएस',
-  },
-  voice_assistant: {
-    en: 'Voice Assistant',
-    te: 'వాయిస్ అసిస్టెంట్',
-    hi: 'वॉयस असिस्टेंट',
-    pa: 'ਵੌਇਸ ਅਸਿਸਟੈਂਟ',
-    mr: 'व्हॉइस असिस्टंट',
-  },
-  speak: {
-    en: 'Speak',
-    te: 'మాట్లాడండి',
-    hi: 'बोलें',
-    pa: 'ਬੋਲੋ',
-    mr: 'बोला',
-  },
-  ask_anything: {
-    en: 'Ask anything...',
-    te: 'ఏదైనా అడగండి...',
-    hi: 'कुछ भी पूछें...',
-    pa: 'ਕੁਝ ਵੀ ਪੁੱਛੋ...',
-    mr: 'काहीही विचारा...',
-  },
-  simple_mode: {
-    en: 'Simple Mode',
-    te: 'సరళ మోడ్',
-    hi: 'सरल मोड',
-    pa: 'ਸਧਾਰਨ ਮੋਡ',
-    mr: 'सोपा मोड',
-  },
-  normal_mode: {
-    en: 'Enterprise Mode',
-    te: 'ఎంటర్‌ప్రైజ్ మోడ్',
-    hi: 'एंटरप्राइज मोड',
-    pa: 'ਐਂਟਰਪ੍ਰਾਈਜ਼ ਮੋਡ',
-    mr: 'एंटरप्राइज मोड',
-  },
-  sign_out: {
-    en: 'Sign Out',
-    te: 'లాగ్ అవుట్',
-    hi: 'साइन आउट',
-    pa: 'ਸਾਈਨ ਆਉਟ',
-    mr: 'साइन आउट',
-  },
-
-  // Driver Mode
+  // Driver Cockpit
   hello_driver: {
     en: '👋 Hello Driver',
     te: '👋 నమస్కారం డ్రైవర్ గారు',
