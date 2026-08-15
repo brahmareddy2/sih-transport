@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { LANGUAGES, useI18nStore } from '../../services/i18n'
 import { executeVoiceCommand } from '../../services/voiceApi'
+import CommunicationModal from './CommunicationModal'
 
-export default function VoiceAssistantModal({ isOpen, onClose }) {
+export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = '' }) {
   const { language, setLanguage, detectAndSetLanguage, t } = useI18nStore()
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
@@ -11,6 +12,8 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
   const [response, setResponse] = useState(null)
   const [speaking, setSpeaking] = useState(false)
   const [voiceAvailable, setVoiceAvailable] = useState(true)
+  const [commTarget, setCommTarget] = useState(null)
+  const [isCommOpen, setIsCommOpen] = useState(false)
 
   const recognitionRef = useRef(null)
 
@@ -66,6 +69,19 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
     }
   }, [speechCode])
 
+  // Handle initial query or start listening on open
+  useEffect(() => {
+    if (isOpen) {
+      if (initialQuery && initialQuery.trim()) {
+        setInputText(initialQuery)
+        setTranscript(initialQuery)
+        handleCommand(initialQuery, false)
+      } else if (voiceAvailable) {
+        startListening()
+      }
+    }
+  }, [isOpen, initialQuery])
+
   const startListening = () => {
     setResponse(null)
     setTranscript('')
@@ -92,7 +108,6 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
 
   const handleCommand = async (queryText, isConfirmed = false, actionPayload = null) => {
     if (!queryText || !queryText.trim()) return
-    // Adaptively detect and switch app language based on talking language
     const activeLang = detectAndSetLanguage(queryText) || language
     setLoading(true)
     try {
@@ -166,7 +181,7 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
       <div
         style={{
           width: '100%',
-          maxWidth: '640px',
+          maxWidth: '680px',
           background: '#181828',
           border: '1px solid #3b3b54',
           borderRadius: 24,
@@ -206,11 +221,11 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
               🎤
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>
-                {t('voice_assistant', 'Voice Assistant')}
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>
+                {t('voice_assistant', 'Universal Voice & Search Assistant')}
               </h3>
               <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                {currentLangObj.native} ({currentLangObj.speechCode})
+                {currentLangObj.native} ({currentLangObj.name})
               </span>
             </div>
           </div>
@@ -220,120 +235,127 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
               background: 'transparent',
               border: 'none',
               color: '#9ca3af',
-              fontSize: '1.4rem',
+              fontSize: '1.5rem',
               cursor: 'pointer',
-              padding: 4,
             }}
           >
             ✕
           </button>
         </div>
 
-        {/* Conversation Body */}
-        <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Voice Prompt Hero */}
+        {/* Modal Body */}
+        <div
+          style={{
+            padding: '24px',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+          }}
+        >
+          {/* Microphone Visualizer */}
           <div
             style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '24px',
-              background: isListening ? '#6366f115' : '#131320',
-              border: `2px dashed ${isListening ? '#6366f1' : '#2d2d3d'}`,
+              padding: '20px',
+              background: isListening ? '#6366f115' : '#141422',
               borderRadius: 20,
+              border: isListening ? '1px solid #6366f1' : '1px solid #2d2d3d',
               transition: 'all 0.3s',
             }}
           >
             <button
               onClick={isListening ? stopListening : startListening}
               style={{
-                width: 80,
-                height: 80,
+                width: 76,
+                height: 76,
                 borderRadius: '50%',
-                background: isListening ? '#ef4444' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                background: isListening
+                  ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                  : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
                 border: 'none',
                 color: '#fff',
                 fontSize: '2rem',
-                cursor: 'pointer',
-                boxShadow: isListening ? '0 0 25px #ef4444' : '0 10px 25px rgba(99, 102, 241, 0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                transition: 'all 0.2s',
+                cursor: 'pointer',
+                boxShadow: isListening
+                  ? '0 0 30px rgba(239, 68, 68, 0.6)'
+                  : '0 0 25px rgba(99, 102, 241, 0.4)',
                 transform: isListening ? 'scale(1.08)' : 'scale(1)',
+                transition: 'all 0.2s',
               }}
             >
-              {isListening ? '⏹️' : '🎤'}
+              {isListening ? '🛑' : '🎤'}
             </button>
-            <div style={{ marginTop: '14px', fontWeight: 700, fontSize: '1rem', color: isListening ? '#6366f1' : '#e2e8f0' }}>
-              {isListening ? t('listening', 'Listening...') : t('speak', 'Tap to Speak')}
+
+            <div style={{ marginTop: '12px', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: isListening ? '#f87171' : '#a5b4fc' }}>
+                {isListening ? t('listening', 'Listening...') : t('tap_to_speak', 'Tap Mic to Speak in English, Telugu, Hindi, etc.')}
+              </span>
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '4px', textAlign: 'center' }}>
-              {currentLangObj.name === 'English'
-                ? 'Try saying: "Plan a trip from Delhi to Hyderabad" or "How much fuel is left?"'
-                : `చెప్పండి: "ఢిల్లీ నుండి హైదరాబాద్ ప్రయాణం" లేదా "ఎంత డీజిల్ ఉంది?"`}
-            </div>
+
+            {transcript && (
+              <div
+                style={{
+                  marginTop: '12px',
+                  padding: '10px 16px',
+                  background: '#1d1d30',
+                  borderRadius: 12,
+                  border: '1px solid #3b3b54',
+                  fontSize: '0.95rem',
+                  color: '#fff',
+                  maxWidth: '90%',
+                  textAlign: 'center',
+                }}
+              >
+                "{transcript}"
+              </div>
+            )}
           </div>
 
-          {/* Transcript Understood Prompt */}
-          {transcript && (
-            <div
-              style={{
-                padding: '14px 18px',
-                background: '#232338',
-                borderRadius: 14,
-                border: '1px solid #3b3b54',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <div>
-                <span style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700 }}>
-                  You Said:
-                </span>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', marginTop: '2px' }}>
-                  "{transcript}"
-                </div>
-              </div>
-              {speaking && (
-                <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700 }}>
-                  🔊 Speaking...
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Loading Indicator */}
           {loading && (
-            <div style={{ textAlign: 'center', padding: '16px', color: '#a5b4fc', fontSize: '0.9rem', fontWeight: 600 }}>
-              ⚡ Processing logistics intelligence...
+            <div style={{ textAlign: 'center', padding: '16px', color: '#a5b4fc', fontSize: '0.9rem' }}>
+              ⚡ Processing with AI Assistant...
             </div>
           )}
 
-          {/* Confirmation Dialog Question */}
+          {/* Confirmation Checkpoint Dialog */}
           {response && response.requires_confirmation && (
             <div
               style={{
                 padding: '20px',
-                background: '#24243a',
-                borderRadius: 16,
-                border: '1px solid #6366f1aa',
-                boxShadow: '0 8px 24px rgba(99, 102, 241, 0.2)',
+                background: '#2b2310',
+                border: '1px solid #f59e0b',
+                borderRadius: 18,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
               }}
             >
-              <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '1.3rem' }}>⚠️</span>
+                <span style={{ fontWeight: 800, color: '#fbbf24', fontSize: '1rem' }}>
+                  Confirmation Required
+                </span>
+              </div>
+              <div style={{ fontSize: '0.95rem', color: '#fef3c7', lineHeight: 1.5 }}>
                 {response.text}
               </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
                 <button
-                  onClick={() => handleCommand(transcript, true, response.action_payload)}
+                  type="button"
+                  onClick={() => handleCommand(transcript || 'Yes', true, response.action_payload)}
                   style={{
-                    flex: 1,
                     padding: '12px',
                     borderRadius: 10,
-                    background: '#10b981',
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
                     color: '#fff',
                     border: 'none',
                     fontWeight: 800,
@@ -341,12 +363,12 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
                     cursor: 'pointer',
                   }}
                 >
-                  ✓ {t('yes_confirm', 'Yes, Proceed')}
+                  ✓ {t('yes_confirm', 'Yes, Confirm')}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setResponse(null)}
                   style={{
-                    flex: 1,
                     padding: '12px',
                     borderRadius: 10,
                     background: '#2d2d3d',
@@ -380,7 +402,7 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
                     {response.text}
                   </div>
                   <button
-                    onClick={() => speakText(response.speech_text || response.text)}
+                    onClick={() => speakText(response.speech_text || response.text, response.language)}
                     style={{
                       padding: '6px 12px',
                       borderRadius: 8,
@@ -398,8 +420,8 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
                 </div>
               </div>
 
-              {/* TRIP RESULT CARD */}
-              {response.card_type === 'TRIP_RESULT' && response.card_data && (
+              {/* DRIVER TRIP CARD */}
+              {(response.card_type === 'DRIVER_TRIP_CARD' || response.card_type === 'TRIP_RESULT') && response.card_data && (
                 <div
                   style={{
                     padding: '20px',
@@ -413,10 +435,10 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>
-                      {response.card_data.title}
+                      {response.card_data.title || `${response.card_data.origin} ➔ ${response.card_data.destination}`}
                     </h4>
                     <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '3px 8px', borderRadius: 6, background: '#10b98122', color: '#10b981' }}>
-                      Optimized Route
+                      AI Route Solver
                     </span>
                   </div>
 
@@ -436,7 +458,7 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
                     <div style={{ padding: '12px', background: '#141422', borderRadius: 10, textAlign: 'center' }}>
                       <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase' }}>Est. Diesel</div>
                       <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fbbf24', marginTop: '2px' }}>
-                        ~{response.card_data.fuel_litres} L
+                        ~{response.card_data.fuel_required_litres || response.card_data.fuel_litres} L
                       </div>
                     </div>
                   </div>
@@ -455,47 +477,131 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
                       <strong style={{ color: '#10b981', fontSize: '1.05rem' }}>₹{response.card_data.total_cost_inr?.toLocaleString?.()}</strong>
                     </div>
                   </div>
-
-                  {/* Fuel Bunkers List */}
-                  {response.card_data.fuel_stations && response.card_data.fuel_stations.length > 0 && (
-                    <div style={{ marginTop: '4px' }}>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9ca3af', marginBottom: '6px' }}>
-                        ⛽ Recommended Fuel Stops:
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {response.card_data.fuel_stations.map((st, i) => (
-                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '6px 10px', background: '#141422', borderRadius: 6 }}>
-                            <span>📍 {st.name} ({st.km} km)</span>
-                            <span style={{ color: '#fbbf24', fontWeight: 700 }}>₹{st.price}/L</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
-              {/* BREAKDOWN RECOVERY CARD */}
-              {response.card_type === 'BREAKDOWN_RECOVERY' && response.card_data && (
+              {/* FACILITIES LIST CARD */}
+              {response.card_type === 'FACILITIES_LIST' && response.card_data && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#ef4444' }}>
-                    🚨 Incident Reported for {response.card_data.vehicle} at {response.card_data.location}
+                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#a5b4fc' }}>
+                    {response.card_data.title}
                   </div>
-                  {response.card_data.plans.map((p) => (
-                    <div key={p.id} style={{ padding: '14px', background: '#202035', borderRadius: 12, border: '1px solid #3b3b54', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {response.card_data.facilities.map((fac) => (
+                    <div
+                      key={fac.id}
+                      style={{
+                        padding: '14px',
+                        background: '#1a1a30',
+                        borderRadius: 12,
+                        border: '1px solid #2d2d48',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
                       <div>
-                        <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>{p.title}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '2px' }}>{p.action}</div>
-                        <div style={{ display: 'flex', gap: '12px', fontSize: '0.75rem', marginTop: '6px', color: '#60a5fa' }}>
-                          <span>⏱️ ETA: {p.eta_minutes} min</span>
-                          <span>💰 Cost: ₹{p.cost_inr}</span>
-                        </div>
+                        <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>{fac.name}</div>
+                        <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '2px' }}>📍 {fac.highway}</div>
+                        {fac.cuisine && <div style={{ fontSize: '0.78rem', color: '#38bdf8', marginTop: '2px' }}>🍽️ {fac.cuisine} • {fac.avg_cost}</div>}
+                        {fac.fee && <div style={{ fontSize: '0.78rem', color: '#34d399', marginTop: '2px' }}>🏷️ {fac.fee} ({fac.capacity})</div>}
+                        {fac.cleanliness_score && <div style={{ fontSize: '0.78rem', color: '#a78bfa', marginTop: '2px' }}>✨ {fac.cleanliness_score}</div>}
                       </div>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 800, padding: '4px 10px', borderRadius: 8, background: '#10b98122', color: '#10b981' }}>
-                        {p.score}%
-                      </span>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 800, padding: '4px 8px', borderRadius: 6, background: '#10b98122', color: '#34d399' }}>
+                          {fac.distance_km} km
+                        </span>
+                      </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* PUNCTURE ASSISTANCE CARD */}
+              {response.card_type === 'PUNCTURE_ASSISTANCE' && response.card_data && (
+                <div style={{ padding: '18px', background: '#251a24', border: '1px solid #ef444466', borderRadius: 16 }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#f87171', marginBottom: '10px' }}>
+                    {response.card_data.title}
+                  </div>
+                  <div style={{ background: '#18121a', padding: '12px', borderRadius: 10, marginBottom: '12px' }}>
+                    <div style={{ fontWeight: 800, color: '#fff' }}>{response.card_data.nearest_shop?.name}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#9ca3af' }}>📍 {response.card_data.nearest_shop?.highway} ({response.card_data.nearest_shop?.distance_km} km away)</div>
+                    <div style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 700, marginTop: '4px' }}>📞 {response.card_data.nearest_shop?.phone}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => {
+                        setCommTarget(response.card_data.nearest_shop)
+                        setIsCommOpen(true)
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 10,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      📞 Call Shop
+                    </button>
+                    <button
+                      onClick={() => alert('Incident recovery created in Phase 5 Incident Engine.')}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        background: '#dc2626',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 10,
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      🚨 Create Incident
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* OWNER FINANCIAL SUMMARY CARD */}
+              {response.card_type === 'OWNER_FINANCIAL_SUMMARY' && response.card_data && (
+                <div style={{ padding: '18px', background: '#1c1c34', border: '1px solid #6366f144', borderRadius: 16 }}>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', marginBottom: '14px' }}>
+                    {response.card_data.title}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '12px' }}>
+                    <div style={{ padding: '10px', background: '#121222', borderRadius: 8, textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Revenue</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#34d399' }}>₹{response.card_data.revenue_inr?.toLocaleString?.()}</div>
+                    </div>
+                    <div style={{ padding: '10px', background: '#121222', borderRadius: 8, textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Expenses</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f87171' }}>₹{response.card_data.expenses?.total_expense_inr?.toLocaleString?.()}</div>
+                    </div>
+                    <div style={{ padding: '10px', background: '#10b98122', borderRadius: 8, textAlign: 'center', border: '1px solid #10b98144' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#10b981' }}>Est. Net Profit</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10b981' }}>₹{response.card_data.estimated_profit_inr?.toLocaleString?.()}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* OWNER FLEET LOCATIONS */}
+              {response.card_type === 'OWNER_FLEET_LOCATIONS' && response.card_data && (
+                <div style={{ padding: '18px', background: '#1c1c34', border: '1px solid #2d2d48', borderRadius: 16 }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff', marginBottom: '10px' }}>
+                    🗺️ Fleet Vehicle Map ({response.card_data.total_vehicles} Total)
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
+                    {response.card_data.top_locations?.map((loc, i) => (
+                      <div key={i} style={{ padding: '10px', background: '#141424', borderRadius: 8, textAlign: 'center' }}>
+                        <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.9rem' }}>{loc.city}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginTop: '2px' }}>{loc.count} Vehicles</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -517,13 +623,13 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder={t('ask_anything', 'Type your request in English or your language...')}
+            placeholder={t('search_placeholder', 'Ask anything... e.g. Route Delhi to Hyderabad, food, parking...')}
             style={{
               flex: 1,
-              background: '#12121f',
+              background: '#121220',
               border: '1px solid #3b3b54',
               borderRadius: 12,
-              padding: '10px 16px',
+              padding: '12px 16px',
               color: '#fff',
               fontSize: '0.9rem',
               outline: 'none',
@@ -531,23 +637,27 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
           />
           <button
             type="submit"
-            disabled={loading || !inputText.trim()}
             style={{
-              padding: '10px 18px',
-              borderRadius: 12,
+              padding: '12px 20px',
               background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
               color: '#fff',
               border: 'none',
-              fontWeight: 700,
-              fontSize: '0.9rem',
+              borderRadius: 12,
+              fontWeight: 800,
               cursor: 'pointer',
-              opacity: inputText.trim() ? 1 : 0.5,
             }}
           >
             Send ➔
           </button>
         </form>
       </div>
+
+      {/* Communication Bridge Modal */}
+      <CommunicationModal
+        isOpen={isCommOpen}
+        onClose={() => setIsCommOpen(false)}
+        contactData={commTarget}
+      />
     </div>
   )
 }

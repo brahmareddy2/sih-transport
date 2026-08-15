@@ -1,0 +1,52 @@
+{
+  "app_title": "Logistics DSS",
+  "search_placeholder": "Ask anything... e.g. 'Route Delhi to Hyderabad', 'Where can I eat?', 'Where are my vehicles?'",
+  "speak": "Speak",
+  "tap_to_speak": "Tap to Speak",
+  "listening": "Listening...",
+  "voice_assistant": "Universal Voice & Search Assistant",
+  "simple_mode": "Simple Mode",
+  "normal_mode": "Enterprise Mode",
+  "sign_out": "Sign Out",
+  "trip": {
+    "title": "My Active Trip",
+    "start": "START TRIP",
+    "view_map": "VIEW MAP",
+    "origin": "Origin",
+    "destination": "Destination",
+    "distance": "Distance",
+    "driving_time": "Driving Time",
+    "diesel_req": "Diesel Required",
+    "fuel_cost": "Fuel Cost",
+    "toll_cost": "Toll Cost",
+    "total_cost": "Total Trip Cost",
+    "eta": "Estimated Arrival",
+    "food": "Food & Dhabas",
+    "parking": "Parking",
+    "restroom": "Restrooms",
+    "fuel_stops": "Fuel Stops",
+    "puncture": "Puncture Help",
+    "return_load": "Return Load",
+    "contact": "Call Contact"
+  },
+  "facilities": {
+    "food_title": "🍛 Nearby Highway Food & Dhabas",
+    "parking_title": "🅿️ Free Highway Truck Parking",
+    "restroom_title": "🚻 Clean Restrooms & Showers",
+    "fuel_title": "⛽ Highway Diesel & Fuel Bunkers",
+    "puncture_title": "⚙️ 24/7 Tyre & Puncture Shops",
+    "call": "📞 Call",
+    "navigate": "📍 Navigate",
+    "details": "View Details"
+  },
+  "financials": {
+    "title": "Today's Fleet Financials (Estimated)",
+    "revenue": "Revenue",
+    "expenses": "Expenses",
+    "profit": "Estimated Net Profit",
+    "fuel": "Fuel",
+    "tolls": "Tolls",
+    "food": "Driver Food/Batta",
+    "maintenance": "Maintenance"
+  }
+}

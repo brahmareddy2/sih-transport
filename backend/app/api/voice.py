@@ -1,21 +1,23 @@
 """
-Voice API Endpoints — Phase 8
-Provides multilingual speech-to-text, intent parsing, confirmation orchestration,
-and voice execution APIs for all 5 roles with RBAC security.
+Voice & Universal Search API Endpoints — Phase 8
+Provides multilingual speech-to-text, universal search routing, highway facilities search,
+safe communication dialer, and confirmation orchestration with RBAC security.
 """
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.voice.language_service import get_language_service, SUPPORTED_LANGUAGES
-from app.services.voice.voice_service import get_voice_service
+from app.services.voice.intent_router import get_intent_router
+from app.services.voice.driver_assistant import HIGHWAY_FACILITIES
+from app.services.voice.communication import get_communication_service
 from app.services.voice.intent_parser import VoiceIntentParser
 
-router = APIRouter(prefix="/voice", tags=["Voice Assistant"])
+router = APIRouter(prefix="/voice", tags=["Voice & Universal Search Assistant"])
 
 
 # ── Pydantic Request / Response Schemas ────────────────────────────────────────
@@ -66,6 +68,27 @@ class VoiceCommandResponse(BaseModel):
     is_authorized: Optional[bool] = True
 
 
+class CallRequest(BaseModel):
+    target_category: str
+    target_name: Optional[str] = None
+    purpose: Optional[str] = "Emergency roadside assistance"
+
+
+class CallResponse(BaseModel):
+    status: str
+    caller_role: str
+    target_name: str
+    category: str
+    phone_masked: str
+    phone_display: str
+    location: str
+    hours: str
+    purpose: str
+    provider: str
+    message: str
+    disclaimer: str
+
+
 class VoiceRespondRequest(BaseModel):
     text: str
     language: str = "en"
@@ -81,7 +104,7 @@ class VoiceRespondResponse(BaseModel):
 
 @router.get("/languages", response_model=List[Dict[str, Any]])
 def get_languages():
-    """Retrieve the list of supported Indian languages (English, Telugu, Hindi, Punjabi, Marathi)."""
+    """Retrieve supported Indian languages (English, Telugu, Hindi, Punjabi, Marathi)."""
     return SUPPORTED_LANGUAGES
 
 
@@ -90,10 +113,7 @@ def transcribe_audio(
     req: TranscribeRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Transcribe audio or return client-provided fallback text.
-    Connects to browser Web Speech API with server-side text fallback.
-    """
+    """Transcribe audio or return client-provided fallback text."""
     text = (req.text_fallback or "").strip()
     parser = VoiceIntentParser()
     detected_lang = req.language or parser.detect_language(text)
@@ -130,11 +150,11 @@ def execute_voice_command(
     db: Session = Depends(get_db),
 ):
     """
-    Execute voice command with strict RBAC security, domain service integration,
-    confirmation checkpoints, and localized response formatting.
+    Execute natural-language voice or search command using the Universal Intent Router.
+    Enforces RBAC security and confirmation checkpoints.
     """
-    service = get_voice_service()
-    result = service.process_voice_query(
+    router_service = get_intent_router()
+    result = router_service.route_query(
         query=req.query,
         user_role=current_user.role,
         user_id=str(current_user.id),
@@ -146,12 +166,44 @@ def execute_voice_command(
     return VoiceCommandResponse(**result)
 
 
+@router.get("/facilities")
+def get_highway_facilities(
+    category: str = Query(default="restaurants", description="restaurants, parking, restrooms, fuel_stations, puncture_shops"),
+    current_user: User = Depends(get_current_user),
+):
+    """Search nearby Indian highway facilities for drivers (Food, Parking, Restrooms, Fuel, Puncture)."""
+    cat = category.lower()
+    items = HIGHWAY_FACILITIES.get(cat, HIGHWAY_FACILITIES.get("restaurants", []))
+    return {
+        "category": cat,
+        "count": len(items),
+        "facilities": items,
+        "disclaimer": "Verified Indian freight corridor amenities dataset.",
+    }
+
+
+@router.post("/call", response_model=CallResponse)
+def initiate_call(
+    req: CallRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Initiate a safe call to a puncture shop, fleet manager, driver, or operator desk."""
+    comm = get_communication_service()
+    data = comm.initiate_contact(
+        target_category=req.target_category,
+        caller_role=current_user.role,
+        target_name=req.target_name,
+        purpose=req.purpose or "Emergency assistance",
+    )
+    return CallResponse(**data)
+
+
 @router.post("/respond", response_model=VoiceRespondResponse)
 def get_voice_synthesis_payload(
     req: VoiceRespondRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """Format text for speech synthesis with the correct BCP-47 language tag."""
+    """Format text for speech synthesis with BCP-47 language tag."""
     lang_svc = get_language_service()
     speech_code = lang_svc.get_speech_code(req.language)
 
