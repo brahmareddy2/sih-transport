@@ -7,11 +7,13 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
   const { language, setLanguage, detectAndSetLanguage, t } = useI18nStore()
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
+  const [interimText, setInterimText] = useState('')
   const [inputText, setInputText] = useState('')
   const [loading, setLoading] = useState(false)
   const [response, setResponse] = useState(null)
   const [speaking, setSpeaking] = useState(false)
   const [voiceAvailable, setVoiceAvailable] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
   const [commTarget, setCommTarget] = useState(null)
   const [isCommOpen, setIsCommOpen] = useState(false)
 
@@ -28,23 +30,45 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
       try {
         const recognition = new SpeechRecognition()
         recognition.continuous = false
-        recognition.interimResults = false
+        recognition.interimResults = true
         recognition.lang = speechCode
 
         recognition.onstart = () => {
           setIsListening(true)
+          setErrorMessage('')
         }
 
         recognition.onresult = (event) => {
-          const speechResult = event.results[0][0].transcript
-          setTranscript(speechResult)
-          setIsListening(false)
-          handleCommand(speechResult, false)
+          let interim = ''
+          let finalTranscript = ''
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript
+            } else {
+              interim += event.results[i][0].transcript
+            }
+          }
+          if (interim) {
+            setInterimText(interim)
+          }
+          if (finalTranscript) {
+            setTranscript(finalTranscript)
+            setInterimText('')
+            setIsListening(false)
+            handleCommand(finalTranscript, false)
+          }
         }
 
         recognition.onerror = (event) => {
           console.warn('Speech recognition error:', event.error)
           setIsListening(false)
+          if (event.error === 'not-allowed') {
+            setErrorMessage('⚠️ Microphone permission is blocked. Please allow mic access in your browser or type below.')
+          } else if (event.error === 'no-speech') {
+            setErrorMessage('⚠️ No speech detected. Please tap the mic and speak clearly.')
+          } else if (event.error === 'network') {
+            setErrorMessage('⚠️ Speech network timeout. You can use the instant voice test buttons or type below.')
+          }
         }
 
         recognition.onend = () => {
@@ -69,31 +93,40 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
     }
   }, [speechCode])
 
-  // Handle initial query or start listening on open
+  // Handle initial query on open
   useEffect(() => {
     if (isOpen) {
+      setErrorMessage('')
       if (initialQuery && initialQuery.trim()) {
         setInputText(initialQuery)
         setTranscript(initialQuery)
         handleCommand(initialQuery, false)
-      } else if (voiceAvailable) {
-        startListening()
       }
     }
   }, [isOpen, initialQuery])
 
   const startListening = () => {
+    setErrorMessage('')
     setResponse(null)
     setTranscript('')
+    setInterimText('')
     if (recognitionRef.current) {
       try {
         recognitionRef.current.lang = speechCode
         recognitionRef.current.start()
+        setIsListening(true)
       } catch (e) {
-        setIsListening(false)
+        // If already started, stop and restart
+        try {
+          recognitionRef.current.stop()
+          setTimeout(() => recognitionRef.current.start(), 200)
+          setIsListening(true)
+        } catch (err) {
+          setIsListening(false)
+        }
       }
     } else {
-      setIsListening(false)
+      setErrorMessage('Speech recognition is not supported in this browser. Please type your query or use the test voice buttons.')
     }
   }
 
@@ -110,6 +143,7 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
     if (!queryText || !queryText.trim()) return
     const activeLang = detectAndSetLanguage(queryText) || language
     setLoading(true)
+    setErrorMessage('')
     try {
       const res = await executeVoiceCommand({
         query: queryText,
@@ -125,7 +159,7 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
       }
     } catch (err) {
       setResponse({
-        text: 'Sorry, I could not process that request. Please try typing.',
+        text: 'Sorry, I could not process that request. Please try typing or select a test query below.',
         speech_text: 'Sorry, I could not process that request.',
         language: activeLang,
         requires_confirmation: false,
@@ -142,7 +176,8 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
       const langObj = LANGUAGES.find((l) => l.code === targetLang) || currentLangObj
       const utterance = new SpeechSynthesisUtterance(textToSpeak)
       utterance.lang = langObj.speechCode || speechCode
-      utterance.rate = 0.95
+      utterance.rate = 0.92
+      utterance.pitch = 1.0
       utterance.onstart = () => setSpeaking(true)
       utterance.onend = () => setSpeaking(false)
       utterance.onerror = () => setSpeaking(false)
@@ -160,6 +195,15 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
     setInputText('')
   }
 
+  const QUICK_TEST_QUERIES = [
+    { label: 'ఢిల్లీ నుండి హైదరాబాద్', query: 'నేను ఢిల్లీ నుండి హైదరాబాద్ వెళ్ళాలి', lang: 'te', icon: '🇮🇳' },
+    { label: 'భోజనం ఎక్కడ దొరుకుతుంది?', query: 'నాకు దగ్గర్లో భోజనం ఎక్కడ దొరుకుతుంది?', lang: 'te', icon: '🍛' },
+    { label: 'నాకు పంక్చర్ అయ్యింది', query: 'నా లారీ టైర్ పంక్చర్ అయ్యింది', lang: 'te', icon: '⚙️' },
+    { label: 'Route Delhi to Hyderabad', query: 'Plan a trip from Delhi to Hyderabad', lang: 'en', icon: '🗺️' },
+    { label: 'Today\'s Profit & Fuel', query: 'How much did I earn today and what is my profit?', lang: 'en', icon: '📊' },
+    { label: 'दिल्ली से हैदराबाद', query: 'मुझे दिल्ली से हैदराबाद जाना है', lang: 'hi', icon: '🇮🇳' },
+  ]
+
   if (!isOpen) return null
 
   return (
@@ -167,13 +211,13 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(10, 10, 20, 0.8)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 9999,
+        backgroundColor: 'rgba(10, 10, 20, 0.85)',
+        backdropFilter: 'blur(10px)',
+        zIndex: 99999,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
+        padding: '16px',
         fontFamily: "'Inter', sans-serif",
       }}
       onClick={onClose}
@@ -181,11 +225,11 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
       <div
         style={{
           width: '100%',
-          maxWidth: '680px',
-          background: '#181828',
-          border: '1px solid #3b3b54',
+          maxWidth: '700px',
+          background: '#16162a',
+          border: '1px solid #3b3b5c',
           borderRadius: 24,
-          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.7)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
@@ -196,26 +240,26 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
         {/* Header */}
         <div
           style={{
-            padding: '20px 24px',
-            borderBottom: '1px solid #2d2d3d',
+            padding: '18px 24px',
+            borderBottom: '1px solid #2d2d44',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: '#1f1f33',
+            background: '#1c1c34',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
-                width: 40,
-                height: 40,
+                width: 42,
+                height: 42,
                 borderRadius: '50%',
                 background: 'linear-gradient(135deg, #6366f1, #a855f7)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '1.2rem',
-                boxShadow: '0 0 15px rgba(99, 102, 241, 0.5)',
+                fontSize: '1.3rem',
+                boxShadow: '0 0 20px rgba(99, 102, 241, 0.5)',
               }}
             >
               🎤
@@ -224,8 +268,8 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
               <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>
                 {t('voice_assistant', 'Universal Voice & Search Assistant')}
               </h3>
-              <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                {currentLangObj.native} ({currentLangObj.name})
+              <span style={{ fontSize: '0.75rem', color: '#a5b4fc', fontWeight: 600 }}>
+                {currentLangObj.flag} {currentLangObj.native} ({currentLangObj.name})
               </span>
             </div>
           </div>
@@ -235,8 +279,9 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
               background: 'transparent',
               border: 'none',
               color: '#9ca3af',
-              fontSize: '1.5rem',
+              fontSize: '1.6rem',
               cursor: 'pointer',
+              padding: '4px 8px',
             }}
           >
             ✕
@@ -253,74 +298,148 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
             gap: '20px',
           }}
         >
-          {/* Microphone Visualizer */}
+          {/* Microphone Visualizer & Status */}
           <div
             style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '20px',
-              background: isListening ? '#6366f115' : '#141422',
+              padding: '24px',
+              background: isListening ? '#6366f118' : speaking ? '#10b98118' : '#121222',
               borderRadius: 20,
-              border: isListening ? '1px solid #6366f1' : '1px solid #2d2d3d',
+              border: isListening ? '2px solid #6366f1' : speaking ? '2px solid #10b981' : '1px solid #2d2d44',
               transition: 'all 0.3s',
             }}
           >
             <button
               onClick={isListening ? stopListening : startListening}
               style={{
-                width: 76,
-                height: 76,
+                width: 84,
+                height: 84,
                 borderRadius: '50%',
                 background: isListening
                   ? 'linear-gradient(135deg, #ef4444, #dc2626)'
+                  : speaking
+                  ? 'linear-gradient(135deg, #10b981, #059669)'
                   : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
                 border: 'none',
                 color: '#fff',
-                fontSize: '2rem',
+                fontSize: '2.2rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer',
                 boxShadow: isListening
-                  ? '0 0 30px rgba(239, 68, 68, 0.6)'
-                  : '0 0 25px rgba(99, 102, 241, 0.4)',
+                  ? '0 0 35px rgba(239, 68, 68, 0.7)'
+                  : speaking
+                  ? '0 0 35px rgba(16, 185, 129, 0.7)'
+                  : '0 0 30px rgba(99, 102, 241, 0.5)',
                 transform: isListening ? 'scale(1.08)' : 'scale(1)',
                 transition: 'all 0.2s',
               }}
             >
-              {isListening ? '🛑' : '🎤'}
+              {isListening ? '🛑' : speaking ? '🔊' : '🎤'}
             </button>
 
-            <div style={{ marginTop: '12px', textAlign: 'center' }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: isListening ? '#f87171' : '#a5b4fc' }}>
-                {isListening ? t('listening', 'Listening...') : t('tap_to_speak', 'Tap Mic to Speak in English, Telugu, Hindi, etc.')}
+            <div style={{ marginTop: '14px', textAlign: 'center' }}>
+              <span style={{ fontSize: '1rem', fontWeight: 800, color: isListening ? '#f87171' : speaking ? '#34d399' : '#a5b4fc' }}>
+                {isListening
+                  ? t('listening', 'Listening to your voice... Speak now!')
+                  : speaking
+                  ? '🔊 Assistant is Speaking Audio Response...'
+                  : t('tap_to_speak', 'Tap Mic to Speak in English, Telugu, Hindi, etc.')}
               </span>
             </div>
 
-            {transcript && (
+            {/* Live Interim / Final Speech Text Display */}
+            {(interimText || transcript) && (
+              <div
+                style={{
+                  marginTop: '12px',
+                  padding: '10px 18px',
+                  background: '#1c1c34',
+                  borderRadius: 12,
+                  border: '1px solid #3b3b5c',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  color: interimText ? '#a5b4fc' : '#fff',
+                  maxWidth: '92%',
+                  textAlign: 'center',
+                }}
+              >
+                "{interimText || transcript}"
+              </div>
+            )}
+
+            {/* Error Message Display */}
+            {errorMessage && (
               <div
                 style={{
                   marginTop: '12px',
                   padding: '10px 16px',
-                  background: '#1d1d30',
-                  borderRadius: 12,
-                  border: '1px solid #3b3b54',
-                  fontSize: '0.95rem',
-                  color: '#fff',
-                  maxWidth: '90%',
+                  background: '#ef444422',
+                  borderRadius: 10,
+                  border: '1px solid #ef444455',
+                  fontSize: '0.82rem',
+                  color: '#f87171',
                   textAlign: 'center',
                 }}
               >
-                "{transcript}"
+                {errorMessage}
               </div>
             )}
           </div>
 
+          {/* Quick 1-Click Voice Test Chips */}
+          <div>
+            <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#9ca3af', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              ⚡ 1-Click Voice Test (Telugu & English):
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+              {QUICK_TEST_QUERIES.map((q, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setTranscript(q.query)
+                    handleCommand(q.query, false)
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 20,
+                    background: '#1c1c34',
+                    border: '1px solid #3b3b5c',
+                    color: '#e2e8f0',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#6366f122'
+                    e.currentTarget.style.borderColor = '#6366f1'
+                    e.currentTarget.style.color = '#fff'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#1c1c34'
+                    e.currentTarget.style.borderColor = '#3b3b5c'
+                    e.currentTarget.style.color = '#e2e8f0'
+                  }}
+                >
+                  <span>{q.icon}</span>
+                  <span>{q.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {loading && (
-            <div style={{ textAlign: 'center', padding: '16px', color: '#a5b4fc', fontSize: '0.9rem' }}>
-              ⚡ Processing with AI Assistant...
+            <div style={{ textAlign: 'center', padding: '16px', color: '#a5b4fc', fontSize: '0.95rem', fontWeight: 700 }}>
+              ⚡ Processing with AI Logistics Engine...
             </div>
           )}
 
@@ -392,9 +511,9 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
               <div
                 style={{
                   padding: '16px 20px',
-                  background: '#1f1f33',
+                  background: '#1c1c34',
                   borderRadius: 16,
-                  border: '1px solid #3b3b54',
+                  border: '1px solid #3b3b5c',
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
@@ -404,18 +523,22 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
                   <button
                     onClick={() => speakText(response.speech_text || response.text, response.language)}
                     style={{
-                      padding: '6px 12px',
-                      borderRadius: 8,
-                      background: '#6366f122',
-                      color: '#a5b4fc',
-                      border: '1px solid #6366f166',
-                      fontWeight: 700,
-                      fontSize: '0.8rem',
+                      padding: '8px 14px',
+                      borderRadius: 10,
+                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      color: '#fff',
+                      border: 'none',
+                      fontWeight: 800,
+                      fontSize: '0.82rem',
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
                     }}
                   >
-                    {t('listen', '🔊 Listen')}
+                    <span>🔊</span>
+                    <span>{t('listen', 'Listen')}</span>
                   </button>
                 </div>
               </div>
@@ -565,6 +688,29 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
                 </div>
               )}
 
+              {/* FUEL STATUS CARD */}
+              {response.card_type === 'FUEL_STATUS' && response.card_data && (
+                <div style={{ padding: '18px', background: '#1c1c34', border: '1px solid #f59e0b44', borderRadius: 16 }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fbbf24', marginBottom: '10px' }}>
+                    ⛽ Vehicle Fuel Level & Telemetry
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                    <div style={{ padding: '10px', background: '#121222', borderRadius: 8, textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Fuel Level</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fbbf24' }}>{response.card_data.fuel_pct}%</div>
+                    </div>
+                    <div style={{ padding: '10px', background: '#121222', borderRadius: 8, textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Remaining Litres</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>{response.card_data.fuel_litres || response.card_data.fuel_level_l} L</div>
+                    </div>
+                    <div style={{ padding: '10px', background: '#121222', borderRadius: 8, textAlign: 'center' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Estimated Range</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#34d399' }}>~{response.card_data.range_km} km</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* OWNER FINANCIAL SUMMARY CARD */}
               {response.card_type === 'OWNER_FINANCIAL_SUMMARY' && response.card_data && (
                 <div style={{ padding: '18px', background: '#1c1c34', border: '1px solid #6366f144', borderRadius: 16 }}>
@@ -587,23 +733,6 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
                   </div>
                 </div>
               )}
-
-              {/* OWNER FLEET LOCATIONS */}
-              {response.card_type === 'OWNER_FLEET_LOCATIONS' && response.card_data && (
-                <div style={{ padding: '18px', background: '#1c1c34', border: '1px solid #2d2d48', borderRadius: 16 }}>
-                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#fff', marginBottom: '10px' }}>
-                    🗺️ Fleet Vehicle Map ({response.card_data.total_vehicles} Total)
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px' }}>
-                    {response.card_data.top_locations?.map((loc, i) => (
-                      <div key={i} style={{ padding: '10px', background: '#141424', borderRadius: 8, textAlign: 'center' }}>
-                        <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.9rem' }}>{loc.city}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#38bdf8', fontWeight: 700, marginTop: '2px' }}>{loc.count} Vehicles</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -613,7 +742,7 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
           onSubmit={handleManualSubmit}
           style={{
             padding: '16px 20px',
-            borderTop: '1px solid #2d2d3d',
+            borderTop: '1px solid #2d2d44',
             background: '#19192b',
             display: 'flex',
             gap: '10px',
@@ -631,7 +760,7 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
               borderRadius: 12,
               padding: '12px 16px',
               color: '#fff',
-              fontSize: '0.9rem',
+              fontSize: '0.95rem',
               outline: 'none',
             }}
           />
