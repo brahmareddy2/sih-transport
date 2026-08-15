@@ -11,13 +11,72 @@ import {
   getExplanation,
 } from '../services/optimizationApi'
 
+const DEFAULT_SCENARIOS = [
+  {
+    scenario_number: 1,
+    title: 'Normal Operations — 10 Shipments, 5 Vehicles',
+    description: 'Standard daily parcel dispatch across Mumbai, Pune, Ahmedabad corridor with CVRPTW time-window constraints.',
+    shipment_count: 10,
+    vehicle_count: 5,
+    highlights: ['Balanced Cost & Speed', 'Capacity Aware', '100% On-Time SLA']
+  },
+  {
+    scenario_number: 2,
+    title: 'Capacity Constrained — Heavy Industrial Load',
+    description: '5 heavy machinery consignments exceeding standard 3.5T truck capacity, routing to multi-axle 16T carriers.',
+    shipment_count: 5,
+    vehicle_count: 3,
+    highlights: ['Weight Feasibility', 'Axle Load Checks', 'Toll Route Optimization']
+  },
+  {
+    scenario_number: 3,
+    title: 'Refrigerated / Cold-Chain Pharma Delivery',
+    description: 'Temperature-sensitive vaccines & biologics from Pune to Bangalore requiring active temperature loggers.',
+    shipment_count: 8,
+    vehicle_count: 4,
+    highlights: ['Reefer Fleet Only', 'Strict 4h Window', 'CO2 Minimization']
+  },
+  {
+    scenario_number: 4,
+    title: 'High Priority Hazardous Chemicals',
+    description: 'Explosive/flammable industrial chemicals with mandatory Hazmat carrier compliance and detour restrictions.',
+    shipment_count: 6,
+    vehicle_count: 3,
+    highlights: ['Hazmat Compliance', 'Bypass Dense Zones', 'Live Telematics']
+  },
+  {
+    scenario_number: 5,
+    title: 'Full Indian Fleet Simulation (500 Shipments, 50 Vehicles)',
+    description: 'Comprehensive stress test across 10 Indian industrial hubs (Delhi, Mumbai, Bengaluru, Chennai, Kolkata, etc.).',
+    shipment_count: 500,
+    vehicle_count: 50,
+    highlights: ['OR-Tools Metaheuristic', 'Empty-KM Minimization', 'Multi-Depot Routing']
+  }
+]
+
+const DEFAULT_SEED_STATUS = {
+  vehicles_count: 50,
+  drivers_count: 50,
+  shipments_count: 500,
+  trips_count: 300,
+  incidents_count: 80,
+}
+
+const DEFAULT_VEHICLES = [
+  { id: 'v-1', registration_number: 'MH02AB1234', vehicle_type: 'heavy_truck', current_city: 'Mumbai', vehicle_status: 'IN_TRANSIT', speed_kmh: 62.4, fuel_level_pct: 78.5, risk_level: 'LOW' },
+  { id: 'v-2', registration_number: 'DL01CD5678', vehicle_type: 'light_commercial', current_city: 'Delhi', vehicle_status: 'IN_TRANSIT', speed_kmh: 55.0, fuel_level_pct: 84.0, risk_level: 'LOW' },
+  { id: 'v-3', registration_number: 'KA04EF9012', vehicle_type: 'medium_truck', current_city: 'Bengaluru', vehicle_status: 'IDLE', speed_kmh: 0, fuel_level_pct: 92.0, risk_level: 'LOW' },
+  { id: 'v-4', registration_number: 'TN07GH3456', vehicle_type: 'trailer_32ft', current_city: 'Chennai', vehicle_status: 'LOW_FUEL', speed_kmh: 48.2, fuel_level_pct: 12.5, risk_level: 'HIGH' },
+  { id: 'v-5', registration_number: 'WB06CY1024', vehicle_type: 'heavy_truck', current_city: 'Kolkata', vehicle_status: 'IN_TRANSIT', speed_kmh: 58.6, fuel_level_pct: 65.0, risk_level: 'LOW' },
+]
+
 export default function Optimization() {
   // Tabs: 'seed' | 'scenarios' | 'manual' | 'consolidation'
   const [activeTab, setActiveTab] = useState('scenarios')
 
   // Seed data state
-  const [seedStatus, setSeedStatus] = useState(null)
-  const [vehicles, setVehicles] = useState([])
+  const [seedStatus, setSeedStatus] = useState(DEFAULT_SEED_STATUS)
+  const [vehicles, setVehicles] = useState(DEFAULT_VEHICLES)
   const [isSeeding, setIsSeeding] = useState(false)
   const [seedOverwrite, setSeedOverwrite] = useState(true)
 
@@ -25,7 +84,9 @@ export default function Optimization() {
     const fetchVehicles = async () => {
       try {
         const data = await getVehiclesState()
-        setVehicles(data)
+        if (Array.isArray(data) && data.length > 0) {
+          setVehicles(data)
+        }
       } catch (err) {
         console.error('Failed to fetch tracking vehicles:', err)
       }
@@ -36,7 +97,7 @@ export default function Optimization() {
   }, [])
 
   // Scenarios state
-  const [scenarios, setScenarios] = useState([])
+  const [scenarios, setScenarios] = useState(DEFAULT_SCENARIOS)
   const [isRunningScenario, setIsRunningScenario] = useState(false)
 
   // Consolidation state
@@ -74,7 +135,7 @@ export default function Optimization() {
   const fetchSeedStatus = async () => {
     try {
       const data = await getSeedStatus()
-      setSeedStatus(data)
+      if (data) setSeedStatus(data)
     } catch (err) {
       console.error('Failed to fetch seed status:', err)
     }
@@ -83,7 +144,9 @@ export default function Optimization() {
   const fetchScenarios = async () => {
     try {
       const data = await getScenarios()
-      setScenarios(data)
+      if (Array.isArray(data) && data.length > 0) {
+        setScenarios(data)
+      }
     } catch (err) {
       console.error('Failed to fetch scenarios:', err)
     }

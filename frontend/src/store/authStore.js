@@ -15,9 +15,15 @@ const DEMO_ACCOUNTS = {
   'customer@logistics.in': { password: 'Customer@123!', role: 'customer', full_name: 'Enterprise Customer', email: 'customer@logistics.in', id: 'demo-customer-id' },
 }
 
+let storedUser = null
+try {
+  const raw = localStorage.getItem('demo_user')
+  if (raw) storedUser = JSON.parse(raw)
+} catch {}
+
 const useAuthStore = create((set, get) => ({
   // ── State ───────────────────────────────────────────────
-  user: null,
+  user: storedUser,
   accessToken: localStorage.getItem('access_token'),
   isAuthenticated: !!localStorage.getItem('access_token'),
   isLoading: false,
