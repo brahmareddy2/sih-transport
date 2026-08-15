@@ -34,7 +34,7 @@ export const ROLE_HOME_PATH = {
   admin: '/admin',
   operator: '/operator',
   fleet_manager: '/fleet',
-  driver: '/driver',
+  driver: '/driver-mode',
   customer: '/customer',
 }
 

@@ -213,6 +213,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/signin" element={<Login />} />
         
         {/* Protected Navigation */}
         <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
