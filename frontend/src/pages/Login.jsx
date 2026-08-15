@@ -19,6 +19,18 @@ export default function Login() {
     }
   }
 
+  const handleQuickLogin = (demoEmail, demoPassword) => {
+    setEmail(demoEmail)
+    setPassword(demoPassword)
+    clearError()
+    login(demoEmail, demoPassword).then((result) => {
+      if (result.success) {
+        const dest = ROLE_HOME_PATH[result.role] || '/'
+        navigate(dest)
+      }
+    })
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -28,9 +40,9 @@ export default function Login() {
       background: 'var(--color-bg-primary)',
       padding: '20px'
     }}>
-      <div className="card" style={{ width: '100%', maxWidth: '420px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '8px' }}>
+      <div className="card" style={{ width: '100%', maxWidth: '460px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: '700', marginBottom: '6px' }}>
             🚚 Logistics DSS
           </h1>
           <p className="text-sm text-muted">
@@ -39,14 +51,14 @@ export default function Login() {
         </div>
 
         {error && (
-          <div className="badge badge-danger w-full" style={{ padding: '10px 14px', marginBottom: '20px', borderRadius: 'var(--radius-md)', textTransform: 'none', justifyContent: 'center' }}>
+          <div className="badge badge-danger w-full" style={{ padding: '12px 14px', marginBottom: '18px', borderRadius: 'var(--radius-md)', textTransform: 'none', justifyContent: 'center', lineHeight: '1.4' }}>
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <label htmlFor="email">Email Address</label>
+            <label htmlFor="email" style={{ fontSize: '0.85rem', fontWeight: '600' }}>Email Address</label>
             <input
               id="email"
               type="email"
@@ -59,7 +71,7 @@ export default function Login() {
           </div>
 
           <div>
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password" style={{ fontSize: '0.85rem', fontWeight: '600' }}>Password</label>
             <input
               id="password"
               type="password"
@@ -71,16 +83,62 @@ export default function Login() {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary w-full" style={{ justifyContent: 'center', marginTop: '8px' }} disabled={isLoading}>
+          <button type="submit" className="btn btn-primary w-full" style={{ justifyContent: 'center', marginTop: '6px' }} disabled={isLoading}>
             {isLoading ? <span className="spinner" /> : 'Sign In'}
           </button>
         </form>
 
-        <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--color-border)', textAlign: 'center' }}>
-          <p className="text-sm text-muted">Phase 1 Demo Credentials</p>
-          <code className="font-mono text-sm" style={{ display: 'block', marginTop: '4px', color: 'var(--color-brand-light)' }}>
-            admin@logistics.in / Admin@123!
-          </code>
+        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
+          <p className="text-xs text-muted" style={{ textAlign: 'center', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            ⚡ Single-Click Demo Sign In
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => handleQuickLogin('admin@logistics.in', 'Admin@123!')}
+              disabled={isLoading}
+              style={{ justifyContent: 'center', fontSize: '0.8rem' }}
+            >
+              👑 Admin
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => handleQuickLogin('operator@logistics.in', 'Operator@123!')}
+              disabled={isLoading}
+              style={{ justifyContent: 'center', fontSize: '0.8rem' }}
+            >
+              ⚡ Operator
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => handleQuickLogin('fleet@logistics.in', 'Fleet@123!')}
+              disabled={isLoading}
+              style={{ justifyContent: 'center', fontSize: '0.8rem' }}
+            >
+              🚛 Fleet Mgr
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => handleQuickLogin('driver@logistics.in', 'Driver@123!')}
+              disabled={isLoading}
+              style={{ justifyContent: 'center', fontSize: '0.8rem' }}
+            >
+              📍 Driver
+            </button>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm w-full"
+            onClick={() => handleQuickLogin('customer@logistics.in', 'Customer@123!')}
+            disabled={isLoading}
+            style={{ justifyContent: 'center', fontSize: '0.8rem', marginTop: '8px' }}
+          >
+            📦 Enterprise Customer
+          </button>
         </div>
       </div>
     </div>
