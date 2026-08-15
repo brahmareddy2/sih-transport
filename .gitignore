@@ -1,0 +1,66 @@
+# ── Secrets & Environment ─────────────────────────────────
+.env
+*.env
+!.env.example
+*.db
+dev_logistics.db
+
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+*.pot
+*.pyc
+htmlcov/
+.coverage
+coverage.xml
+
+# ML model artifacts
+backend/app/services/ai_ml/model_store/*.pkl
+backend/app/services/ai_ml/model_store/*.joblib
+
+# ── Node / Frontend ───────────────────────────────────────
+node_modules/
+dist/
+.DS_Store
+frontend/dist/
+*.local
+*.timestamp-*
+
+# ── Docker ────────────────────────────────────────────────
+# Keep docker-compose.yml committed
+# Ignore any local override files
+docker-compose.override.yml
+
+# ── IDE ───────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ── OS ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Alembic ───────────────────────────────────────────────
+# Keep alembic/versions/ committed
+# Ignore any generated __pycache__ inside
+alembic/__pycache__/
+
+# ── Postgres data volume (local dev) ─────────────────────
+postgres_data/
+redis_data/
