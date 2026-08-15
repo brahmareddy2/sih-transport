@@ -8,15 +8,23 @@ import IncidentManagement from './pages/IncidentManagement'
 import ReturnCargo from './pages/ReturnCargo'
 import WhatIfSimulator from './pages/WhatIfSimulator'
 import AnalyticsDashboard from './pages/AnalyticsDashboard'
+import DriverMode from './pages/DriverMode'
+import RoleHome from './pages/RoleHome'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import useAuthStore from './store/authStore'
+import { useI18nStore } from './services/i18n'
+import LanguageSelector from './components/common/LanguageSelector'
+import SimpleModeToggle from './components/common/SimpleModeToggle'
+import VoiceAssistantModal from './components/voice/VoiceAssistantModal'
 import { ROLES } from './services/constants'
 import { getUnreadNotificationCount } from './services/analyticsApi'
 
 // Layout for authenticated routes
 function DashboardLayout({ title, roleLabel, children }) {
   const { user, logout } = useAuthStore()
+  const { simpleMode, t } = useI18nStore()
   const [unreadCount, setUnreadCount] = useState(0)
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false)
 
   useEffect(() => {
     async function checkNotifs() {
@@ -33,23 +41,78 @@ function DashboardLayout({ title, roleLabel, children }) {
   }, [])
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1440px', margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid var(--color-border)', paddingBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+    <div style={{ padding: '20px', maxWidth: '1440px', margin: '0 auto', fontFamily: "'Inter', sans-serif" }}>
+      <header
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px',
+          borderBottom: '1px solid var(--color-border,#2d2d3d)',
+          paddingBottom: '16px',
+          flexWrap: 'wrap',
+          gap: '12px',
+        }}
+      >
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '700', margin: 0 }}>{title}</h1>
-          <p className="text-muted" style={{ fontSize: '0.875rem', margin: '4px 0 0' }}>
-            Role: <span className="badge badge-info">{roleLabel}</span> | Logged in as: {user?.email}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Link to="/home" style={{ textDecoration: 'none' }}>
+              <h1 style={{ fontSize: '1.6rem', fontWeight: '800', margin: 0, color: '#fff' }}>
+                {t('app_title', 'Logistics DSS')}
+              </h1>
+            </Link>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: '#6366f122', color: '#a5b4fc', border: '1px solid #6366f144' }}>
+              {roleLabel}
+            </span>
+          </div>
+          <p className="text-muted" style={{ fontSize: '0.8rem', margin: '4px 0 0', color: '#9ca3af' }}>
+            {user?.email}
           </p>
         </div>
+
+        {/* Global Controls & Navigation */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Universal Persistent Voice Button */}
+          <button
+            onClick={() => setIsVoiceOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '7px 14px',
+              fontSize: '0.85rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              boxShadow: '0 0 15px rgba(99, 102, 241, 0.4)',
+              transition: 'all 0.2s',
+            }}
+          >
+            <span>🎤</span>
+            <span>{t('speak', 'Speak')}</span>
+          </button>
+
+          {/* Language Selector */}
+          <LanguageSelector />
+
+          {/* Simple Mode Toggle */}
+          <SimpleModeToggle />
+
+          {/* Primary Navigation Links */}
+          <Link to="/home" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            🏠 Home
+          </Link>
+          <Link to="/driver-mode" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#10b98122', color: '#10b981', border: '1px solid #10b98144' }}>
+            🚛 Driver
+          </Link>
           <Link to="/operator" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
             🛰️ Optimization
           </Link>
-          <Link to="/ml" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            📊 AI/ML
-          </Link>
           <Link to="/tracking" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            🚛 GPS Tracking
+            📍 GPS
           </Link>
           <Link to="/incidents" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
             🚨 Incidents
@@ -57,18 +120,24 @@ function DashboardLayout({ title, roleLabel, children }) {
           <Link to="/return-cargo" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
             🔄 Return Cargo
           </Link>
+          <Link to="/ml" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            📊 AI/ML
+          </Link>
           <Link to="/what-if" className="btn btn-primary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#4f46e5' }}>
             ⚡ What-If
           </Link>
           <Link to="/analytics" className="btn btn-primary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#059669' }}>
             📈 Analytics
           </Link>
+
           {unreadCount > 0 && (
             <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 800, padding: '4px 8px', borderRadius: 12 }}>
               🔔 {unreadCount}
             </span>
           )}
-          <button onClick={logout} className="btn btn-secondary btn-sm" style={{ marginLeft: '6px' }}>Sign Out</button>
+          <button onClick={logout} className="btn btn-secondary btn-sm" style={{ marginLeft: '4px' }}>
+            {t('sign_out', 'Sign Out')}
+          </button>
         </div>
       </header>
 
@@ -77,11 +146,41 @@ function DashboardLayout({ title, roleLabel, children }) {
           <div className="card">
             <h3>Operational Dashboard</h3>
             <p className="mt-4" style={{ color: 'var(--color-text-secondary)' }}>
-              Logistics DSS Fleet portal fully configured with Real-time GPS Tracking, OR-Tools optimization, Return Cargo Matching, and AI models.
+              Logistics DSS Fleet portal configured with Universal Voice Assistant, Real-time GPS Tracking, OR-Tools optimization, and AI models.
             </p>
           </div>
         )}
       </div>
+
+      {/* Floating Universal Voice Assistant Trigger at Bottom-Right */}
+      <button
+        onClick={() => setIsVoiceOpen(true)}
+        style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          width: 64,
+          height: 64,
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+          color: '#fff',
+          border: 'none',
+          boxShadow: '0 8px 30px rgba(99, 102, 241, 0.6)',
+          fontSize: '1.8rem',
+          cursor: 'pointer',
+          zIndex: 9000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.2s',
+        }}
+        title="Universal Voice Assistant"
+      >
+        🎤
+      </button>
+
+      {/* Voice Assistant Modal */}
+      <VoiceAssistantModal isOpen={isVoiceOpen} onClose={() => setIsVoiceOpen(false)} />
     </div>
   )
 }
@@ -115,8 +214,28 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         
-        {/* Protected Navigation - All authenticated users have full platform access in demo */}
+        {/* Protected Navigation */}
         <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
+          {/* Phase 8 Role Home & Simple Driver Interfaces */}
+          <Route path="/home" element={
+            <DashboardLayout title="Logistics DSS — Home" roleLabel={userRoleLabel}>
+              <RoleHome />
+            </DashboardLayout>
+          } />
+
+          <Route path="/driver-mode" element={
+            <DashboardLayout title="Driver Cockpit — Simple Mode" roleLabel="Lead Driver">
+              <DriverMode />
+            </DashboardLayout>
+          } />
+
+          <Route path="/driver" element={
+            <DashboardLayout title="Driver Cockpit — Simple Mode" roleLabel="Lead Driver">
+              <DriverMode />
+            </DashboardLayout>
+          } />
+
+          {/* Phase 1–7 Routes */}
           <Route path="/admin" element={
             <DashboardLayout title="Admin Console — Fleet Optimization" roleLabel="Administrator">
               <Optimization />
@@ -137,12 +256,6 @@ export default function App() {
 
           <Route path="/tracking" element={
             <DashboardLayout title="Live Fleet Tracking & Telematics" roleLabel={userRoleLabel}>
-              <LiveTracking />
-            </DashboardLayout>
-          } />
-
-          <Route path="/driver" element={
-            <DashboardLayout title="Driver Console — Route Telematics" roleLabel="Driver">
               <LiveTracking />
             </DashboardLayout>
           } />
@@ -184,8 +297,8 @@ export default function App() {
           } />
         </Route>
 
-        <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </BrowserRouter>
   )
