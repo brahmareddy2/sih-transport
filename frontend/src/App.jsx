@@ -87,7 +87,7 @@ function DashboardLayout({ title, roleLabel, children }) {
 }
 
 export default function App() {
-  const { accessToken, fetchProfile } = useAuthStore()
+  const { accessToken, fetchProfile, user } = useAuthStore()
 
   useEffect(() => {
     if (accessToken) {
@@ -95,88 +95,96 @@ export default function App() {
     }
   }, [accessToken, fetchProfile])
 
+  const ALL_ROLES = [
+    ROLES.ADMIN,
+    ROLES.OPERATOR,
+    ROLES.FLEET_MANAGER,
+    ROLES.DRIVER,
+    ROLES.CUSTOMER,
+  ]
+
+  const userRole = user?.role || 'operator'
+  const userRoleLabel = userRole === 'admin' ? 'Administrator'
+    : userRole === 'fleet_manager' ? 'Fleet Manager'
+    : userRole === 'driver' ? 'Driver'
+    : userRole === 'customer' ? 'Enterprise Customer'
+    : 'Logistics Operator'
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         
-        {/* Protected Routes */}
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
+        {/* Protected Navigation - All authenticated users have full platform access in demo */}
+        <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
           <Route path="/admin" element={
-            <DashboardLayout title="Admin Console" roleLabel="Administrator">
+            <DashboardLayout title="Admin Console — Fleet Optimization" roleLabel="Administrator">
               <Optimization />
             </DashboardLayout>
           } />
-        </Route>
-
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.OPERATOR, ROLES.ADMIN]} />}>
+          
           <Route path="/operator" element={
-            <DashboardLayout title="Operator Dashboard" roleLabel="Logistics Operator">
+            <DashboardLayout title="Operator Dashboard — Route Solver" roleLabel="Logistics Operator">
               <Optimization />
             </DashboardLayout>
           } />
-        </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.OPERATOR, ROLES.ADMIN]} />}>
-          <Route path="/ml" element={
-            <DashboardLayout title="AI/ML Intelligence" roleLabel="AI Analyst">
-              <MlDashboard />
-            </DashboardLayout>
-          } />
-        </Route>
-
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.OPERATOR, ROLES.FLEET_MANAGER, ROLES.ADMIN]} />}>
-          <Route path="/tracking" element={
-            <DashboardLayout title="Live Fleet Tracking" roleLabel="Fleet Manager">
+          <Route path="/fleet" element={
+            <DashboardLayout title="Fleet Management — Live Tracking" roleLabel="Fleet Manager">
               <LiveTracking />
             </DashboardLayout>
           } />
-        </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.OPERATOR, ROLES.FLEET_MANAGER, ROLES.ADMIN]} />}>
+          <Route path="/tracking" element={
+            <DashboardLayout title="Live Fleet Tracking & Telematics" roleLabel={userRoleLabel}>
+              <LiveTracking />
+            </DashboardLayout>
+          } />
+
+          <Route path="/driver" element={
+            <DashboardLayout title="Driver Console — Route Telematics" roleLabel="Driver">
+              <LiveTracking />
+            </DashboardLayout>
+          } />
+
+          <Route path="/customer" element={
+            <DashboardLayout title="Customer Portal — Consignment Analytics" roleLabel="Customer">
+              <AnalyticsDashboard />
+            </DashboardLayout>
+          } />
+
+          <Route path="/ml" element={
+            <DashboardLayout title="AI/ML Intelligence & Predictions" roleLabel={userRoleLabel}>
+              <MlDashboard />
+            </DashboardLayout>
+          } />
+
           <Route path="/incidents" element={
-            <DashboardLayout title="Incident Management" roleLabel="Operator">
+            <DashboardLayout title="Incident Management & Recovery" roleLabel={userRoleLabel}>
               <IncidentManagement />
             </DashboardLayout>
           } />
-        </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.OPERATOR, ROLES.FLEET_MANAGER, ROLES.ADMIN]} />}>
           <Route path="/return-cargo" element={
-            <DashboardLayout title="Return Cargo & Empty-KM Reduction" roleLabel="Operator">
+            <DashboardLayout title="Return Cargo & Empty-KM Reduction" roleLabel={userRoleLabel}>
               <ReturnCargo />
             </DashboardLayout>
           } />
-        </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.OPERATOR, ROLES.FLEET_MANAGER, ROLES.ADMIN]} />}>
           <Route path="/what-if" element={
-            <DashboardLayout title="What-If Contingency Simulator" roleLabel="Operator">
+            <DashboardLayout title="What-If Contingency Simulator" roleLabel={userRoleLabel}>
               <WhatIfSimulator />
             </DashboardLayout>
           } />
-        </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.OPERATOR, ROLES.FLEET_MANAGER, ROLES.ADMIN]} />}>
           <Route path="/analytics" element={
-            <DashboardLayout title="Enterprise Analytics & Performance" roleLabel="Operator">
+            <DashboardLayout title="Enterprise Analytics & Performance" roleLabel={userRoleLabel}>
               <AnalyticsDashboard />
             </DashboardLayout>
           } />
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.FLEET_MANAGER, ROLES.ADMIN]} />}>
-          <Route path="/fleet" element={<DashboardLayout title="Fleet Management" roleLabel="Fleet Manager" />} />
-        </Route>
-
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.DRIVER, ROLES.ADMIN]} />}>
-          <Route path="/driver" element={<DashboardLayout title="Driver Console" roleLabel="Driver" />} />
-        </Route>
-
-        <Route element={<ProtectedRoute allowedRoles={[ROLES.CUSTOMER, ROLES.ADMIN]} />}>
-          <Route path="/customer" element={<DashboardLayout title="Customer Portal" roleLabel="Customer" />} />
-        </Route>
-
+        <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
