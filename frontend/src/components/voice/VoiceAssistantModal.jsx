@@ -3,7 +3,7 @@ import { LANGUAGES, useI18nStore } from '../../services/i18n'
 import { executeVoiceCommand } from '../../services/voiceApi'
 
 export default function VoiceAssistantModal({ isOpen, onClose }) {
-  const { language, t } = useI18nStore()
+  const { language, setLanguage, detectAndSetLanguage, t } = useI18nStore()
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [inputText, setInputText] = useState('')
@@ -92,11 +92,13 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
 
   const handleCommand = async (queryText, isConfirmed = false, actionPayload = null) => {
     if (!queryText || !queryText.trim()) return
+    // Adaptively detect and switch app language based on talking language
+    const activeLang = detectAndSetLanguage(queryText) || language
     setLoading(true)
     try {
       const res = await executeVoiceCommand({
         query: queryText,
-        language,
+        language: activeLang,
         confirmed: isConfirmed,
         action_payload: actionPayload,
       })
@@ -104,13 +106,13 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
 
       // Auto-speak response if speech synthesis available
       if (res && res.speech_text) {
-        speakText(res.speech_text)
+        speakText(res.speech_text, activeLang)
       }
     } catch (err) {
       setResponse({
         text: 'Sorry, I could not process that request. Please try typing.',
         speech_text: 'Sorry, I could not process that request.',
-        language,
+        language: activeLang,
         requires_confirmation: false,
       })
     } finally {
@@ -118,12 +120,13 @@ export default function VoiceAssistantModal({ isOpen, onClose }) {
     }
   }
 
-  const speakText = (textToSpeak) => {
+  const speakText = (textToSpeak, targetLang = language) => {
     if (!window.speechSynthesis) return
     try {
       window.speechSynthesis.cancel()
+      const langObj = LANGUAGES.find((l) => l.code === targetLang) || currentLangObj
       const utterance = new SpeechSynthesisUtterance(textToSpeak)
-      utterance.lang = speechCode
+      utterance.lang = langObj.speechCode || speechCode
       utterance.rate = 0.95
       utterance.onstart = () => setSpeaking(true)
       utterance.onend = () => setSpeaking(false)

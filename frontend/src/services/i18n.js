@@ -1,5 +1,5 @@
 /**
- * Internationalization (i18n) Dictionary — Phase 8
+ * Internationalization (i18n) Dictionary & Adaptive Language Detection — Phase 8
  * Supports 5 Indian Languages:
  * - en: English
  * - te: Telugu (తెలుగు)
@@ -18,6 +18,85 @@ export const LANGUAGES = [
 ]
 
 export const DICTIONARY = {
+  // Login Page Translations
+  select_language_title: {
+    en: '🌐 Choose Your Preferred Language',
+    te: '🌐 మీ ప్రాధాన్య భాషను ఎంచుకోండి',
+    hi: '🌐 अपनी पसंदीदा भाषा चुनें',
+    pa: '🌐 ਆਪਣੀ ਪਸੰਦੀਦਾ ਭਾਸ਼ਾ ਚੁਣੋ',
+    mr: '🌐 तुमची पसंतीची भाषा निवडा',
+  },
+  select_language_sub: {
+    en: 'The application and Voice Assistant will operate in your chosen language.',
+    te: 'అప్లికేషన్ మరియు వాయిస్ అసిస్టెంట్ మీరు ఎంచుకున్న భాషలో పనిచేస్తాయి.',
+    hi: 'एप्लिकेशन और वॉयस असिस्टेंट आपकी चुनी हुई भाषा में काम करेंगे।',
+    pa: 'ਐਪਲੀਕੇਸ਼ਨ ਅਤੇ ਵੌਇਸ ਅਸਿਸਟੈਂਟ ਤੁਹਾਡੀ ਚੁਣੀ ਹੋਈ ਭਾਸ਼ਾ ਵਿੱਚ ਕੰਮ ਕਰਨਗੇ।',
+    mr: 'अ‍ॅप्लिकेशन आणि व्हॉइस असिस्टंट तुमच्या निवडलेल्या भाषेत काम करतील.',
+  },
+  login_portal_title: {
+    en: 'Logistics DSS Portal',
+    te: 'లాజిస్టిక్స్ డీఎస్ఎస్ పోర్టల్',
+    hi: 'लॉजिस्टिक्स डीएसएस पोर्टल',
+    pa: 'ਲਾਜਿਸਟਿਕਸ ਡੀਐਸਐਸ ਪੋਰਟਲ',
+    mr: 'लॉजिस्टिक्स डीएसएस पोर्टल',
+  },
+  login_portal_sub: {
+    en: 'AI-Powered Multi-Vehicle Logistics Decision Support System',
+    te: 'AI ఆధారిత మల్టీ-వెహికల్ లాజిస్టిక్స్ ఆప్టిమైజేషన్ సిస్టమ్',
+    hi: 'एआई-संचालित मल्टी-वाहन लॉजिस्टिक्स डिसीजन सपोर्ट सिस्टम',
+    pa: 'ਏਆਈ-ਸੰਚਾਲਿਤ ਮਲਟੀ-ਵਾਹਨ ਲੌਜਿਸਟਿਕਸ ਫੈਸਲਾ ਸਹਾਇਤਾ ਪ੍ਰਣਾਲੀ',
+    mr: 'एआय-संचलित मल्टी-वाहन लॉजिस्टिक्स निर्णय समर्थन प्रणाली',
+  },
+  single_click_login: {
+    en: '⚡ 1-Click Instant Sign In / Login',
+    te: '⚡ 1-క్లిక్ తక్షణ లాగిన్ / సైన్ ఇన్',
+    hi: '⚡ 1-क्लिक त्वरित साइन इन / लॉगिन',
+    pa: '⚡ 1-ਕਲਿੱਕ ਤੁਰੰਤ ਸਾਈਨ ਇਨ / ਲੌਗਇਨ',
+    mr: '⚡ 1-क्लिक झटपट साइन इन / लॉगिन',
+  },
+  no_typing_needed: {
+    en: 'Tap your role to enter',
+    te: 'ప్రవేశించడానికి మీ పాత్రను తాకండి',
+    hi: 'प्रवेश करने के लिए अपनी भूमिका पर टैप करें',
+    pa: 'ਦਾਖਲ ਹੋਣ ਲਈ ਆਪਣੀ ਭੂਮਿਕਾ ਤੇ ਟੈਪ ਕਰੋ',
+    mr: 'प्रवेश करण्यासाठी तुमची भूमिका टॅप करा',
+  },
+  or_enter_credentials: {
+    en: 'OR ENTER CREDENTIALS',
+    te: 'లేదా వివరాలను నమోదు చేయండి',
+    hi: 'या क्रेडेंशियल दर्ज करें',
+    pa: 'ਜਾਂ ਵੇਰਵੇ ਦਰਜ ਕਰੋ',
+    mr: 'किंवा लॉगिन तपशील प्रविष्ट करा',
+  },
+  email_label: {
+    en: 'Email Address',
+    te: 'ఇమెయిల్ చిరునామా',
+    hi: 'ईमेल पता',
+    pa: 'ਈਮੇਲ ਪਤਾ',
+    mr: 'ईमेल पत्ता',
+  },
+  password_label: {
+    en: 'Password',
+    te: 'పాస్‌వర్డ్',
+    hi: 'पासवर्ड',
+    pa: 'ਪਾਸਵਰਡ',
+    mr: 'पासवर्ड',
+  },
+  sign_in_btn: {
+    en: 'Sign In / Log In ➔',
+    te: 'సైన్ ఇన్ / లాగిన్ ➔',
+    hi: 'साइन इन / लॉगिन ➔',
+    pa: 'ਸਾਈਨ ਇਨ / ਲੌਗਇਨ ➔',
+    mr: 'साइन इन / लॉगिन ➔',
+  },
+
+  // Role descriptions
+  role_admin: { en: 'Admin', te: 'అడ్మిన్', hi: 'एडमिन', pa: 'ਐਡਮਿਨ', mr: 'अ‍ॅडमिन' },
+  role_operator: { en: 'Operator', te: 'ఆపరేటర్', hi: 'ऑपरेटर', pa: 'ਆਪਰੇਟਰ', mr: 'ऑपरेटर' },
+  role_fleet: { en: 'Fleet Mgr', te: 'ఫ్లీట్ మేనేజర్', hi: 'फ्लीट मैनेजर', pa: 'ਫਲੀਟ ਮੈਨੇਜਰ', mr: 'फ्लीट मॅनेजर' },
+  role_driver: { en: 'Driver', te: 'డ్రైవర్', hi: 'ड्राइवर', pa: 'ਡਰਾਈਵਰ', mr: 'ड्रायव्हर' },
+  role_customer: { en: 'Enterprise Customer', te: 'ఎంటర్‌ప్రైజ్ కస్టమర్', hi: 'एंटरप्राइज कस्टमर', pa: 'ਐਂਟਰਪ੍ਰਾਈਜ਼ ਗਾਹਕ', mr: 'एंटरप्राइज ग्राहक' },
+
   // Navigation & Header
   app_title: {
     en: 'Logistics DSS',
@@ -170,6 +249,31 @@ export const useI18nStore = create((set, get) => ({
   setSimpleMode: (enabled) => {
     localStorage.setItem('app_simple_mode', String(enabled))
     set({ simpleMode: enabled })
+  },
+
+  // Automatic spoken language detection & dynamic UI switching
+  detectAndSetLanguage: (text) => {
+    if (!text || typeof text !== 'string') return get().language
+    const clean = text.trim()
+
+    // 1. Telugu Unicode Range [\u0C00-\u0C7F]
+    if (/[\u0C00-\u0C7F]/.test(clean)) {
+      get().setLanguage('te')
+      return 'te'
+    }
+    // 2. Punjabi Unicode Range [\u0A00-\u0A7F]
+    if (/[\u0A00-\u0A7F]/.test(clean)) {
+      get().setLanguage('pa')
+      return 'pa'
+    }
+    // 3. Devanagari Unicode Range [\u0900-\u097F] (Marathi vs Hindi)
+    if (/[\u0900-\u097F]/.test(clean)) {
+      const isMarathi = ['आहे', 'नाही', 'कुठे', 'जायचे', 'झाला', 'कसा', 'गाडी', 'तास'].some((w) => clean.includes(w))
+      const code = isMarathi ? 'mr' : 'hi'
+      get().setLanguage(code)
+      return code
+    }
+    return get().language
   },
 
   t: (key, fallback = '') => {
