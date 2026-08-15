@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useI18nStore } from '../services/i18n'
 import { getVehiclesState } from '../services/trackingApi'
 import {
   getSeedStatus,
@@ -71,6 +72,7 @@ const DEFAULT_VEHICLES = [
 ]
 
 export default function Optimization() {
+  const { language, t } = useI18nStore()
   // Tabs: 'seed' | 'scenarios' | 'manual' | 'consolidation'
   const [activeTab, setActiveTab] = useState('scenarios')
 
@@ -79,6 +81,45 @@ export default function Optimization() {
   const [vehicles, setVehicles] = useState(DEFAULT_VEHICLES)
   const [isSeeding, setIsSeeding] = useState(false)
   const [seedOverwrite, setSeedOverwrite] = useState(true)
+
+  const getLocalizedScenario = (sc) => {
+    if (sc.scenario_number === 1) {
+      return {
+        ...sc,
+        title: language === 'te' ? 'సాధారణ కార్యకలాపాలు — 10 సరుకులు, 5 వాహనాలు' : language === 'hi' ? 'सामान्य परिचालन — 10 शिपमेंट, 5 वाहन' : language === 'pa' ? 'ਸਧਾਰਨ ਕਾਰਜ — 10 ਸ਼ਿਪਮੈਂਟ, 5 ਵਾਹਨ' : language === 'mr' ? 'सामान्य ऑपरेशन्स — 10 शिपमेंट, 5 वाहने' : sc.title,
+        description: language === 'te' ? 'ముంబై, పూణే, అహ్మదాబాద్ కారిడార్‌లో CVRPTW సమయ పరిమితులతో రోజువారీ పార్శిల్ పంపిణీ.' : language === 'hi' ? 'मुंबई, पुणे, अहमदाबाद कॉरिडोर में सीवीआरपीटीडब्ल्यू समय-सीमा बाधाओं के साथ मानक दैनिक पार्सल प्रेषण।' : language === 'pa' ? 'ਮੁੰਬਈ, ਪੁਣੇ, ਅਹਿਮਦਾਬਾਦ ਕੋਰੀਡੋਰ ਵਿੱਚ ਸਮਾਂ-ਸੀਮਾ ਪਾਬੰਦੀਆਂ ਨਾਲ ਰੋਜ਼ਾਨਾ ਪਾਰਸਲ ਡਿਸਪੈਚ।' : language === 'mr' ? 'मुंबई, पुणे, अहमदाबाद कॉरिडॉरमध्ये वेळेच्या बंधनांसह दैनंदिन पार्सल पाठवणे.' : sc.description,
+      }
+    }
+    if (sc.scenario_number === 2) {
+      return {
+        ...sc,
+        title: language === 'te' ? 'పరిమిత సామర్థ్యం — భారీ పారిశ్రామిక లోడ్' : language === 'hi' ? 'क्षमता विवश — भारी औद्योगिक भार' : language === 'pa' ? 'ਸਮਰੱਥਾ ਸੀਮਤ — ਭਾਰੀ ਉਦਯੋਗਿਕ ਲੋਡ' : language === 'mr' ? 'क्षमता मर्यादित — जड औद्योगिक लोड' : sc.title,
+        description: language === 'te' ? 'ప్రామాణిక 3.5T సామర్థ్యాన్ని మించిన 5 భారీ యంత్ర సరుకులు, మల్టీ-యాక్సిల్ 16T లారీలకు మళ్లింపు.' : language === 'hi' ? 'मानक 3.5T ट्रक क्षमता से अधिक 5 भारी मशीनरी कंसाइनमेंट, मल्टी-एक्सल 16T वाहकों को रूटिंग।' : sc.description,
+      }
+    }
+    if (sc.scenario_number === 3) {
+      return {
+        ...sc,
+        title: language === 'te' ? 'శీతల గిడ్డంగి / కోల్డ్-చైన్ ఫార్మా డెలివరీ' : language === 'hi' ? 'कोल्ड-चेन फार्मा डिलीवरी' : language === 'pa' ? 'ਕੋਲਡ-ਚੇਨ ਫਾਰਮਾ ਡਿਲਿਵਰੀ' : language === 'mr' ? 'कोल्ड-चेन फार्मा डिलिव्हरी' : sc.title,
+        description: language === 'te' ? 'పూణే నుండి బెంగళూరుకు ఉష్ణోగ్రత-సున్నితమైన వ్యాక్సిన్‌లు & బయోలాజిక్స్ కోసం క్రియాశీల ఉష్ణోగ్రత లాగర్‌లు.' : language === 'hi' ? 'पुणे से बैंगलोर तक तापमान-संवेदनशील टीके और बायोलॉजिक्स जिनके लिए सक्रिय तापमान लॉगर की आवश्यकता होती है।' : sc.description,
+      }
+    }
+    if (sc.scenario_number === 4) {
+      return {
+        ...sc,
+        title: language === 'te' ? 'అధిక ప్రాధాన్యత గల ప్రమాదకర రసాయనాలు' : language === 'hi' ? 'उच्च प्राथमिकता खतरनाक रसायन' : language === 'pa' ? 'ਉੱਚ ਤਰਜੀਹ ਖ਼ਤਰਨਾਕ ਰਸਾਇਣ' : language === 'mr' ? 'उच्च प्राधान्य घातक रसायने' : sc.title,
+        description: language === 'te' ? 'తప్పనిసరి హాజ్మట్ క్యారియర్ నిబంధనలతో కూడిన పేలుడు/మండే పారిశ్రామిక రసాయనాలు.' : language === 'hi' ? 'अनिवार्य हैज़मैट कैरियर अनुपालन और चक्कर प्रतिबंधों के साथ विस्फोटक/ज्वलनशील औद्योगिक रसायन।' : sc.description,
+      }
+    }
+    if (sc.scenario_number === 5) {
+      return {
+        ...sc,
+        title: language === 'te' ? 'పూర్తి భారతీయ ఫ్లీట్ సిమ్యులేషన్ (500 సరుకులు, 50 వాహనాలు)' : language === 'hi' ? 'पूर्ण भारतीय फ्लीट सिमुलेशन (500 शिपमेंट, 50 वाहन)' : language === 'pa' ? 'ਪੂਰਾ ਭਾਰਤੀ ਫਲੀਟ ਸਿਮੂਲੇਸ਼ਨ (500 ਸ਼ਿਪਮੈਂਟ, 50 ਵਾਹਨ)' : language === 'mr' ? 'संपूर्ण भारतीय फ्लीट सिम्युलेशन (500 शिपमेंट, 50 वाहने)' : sc.title,
+        description: language === 'te' ? '10 భారతీయ పారిశ్రామిక కేంద్రాలలో సమగ్ర ఒత్తిడి పరీక్ష (ఢిల్లీ, ముంబై, బెంగళూరు, చెన్నై, కోల్‌కతా మొదలైనవి).' : language === 'hi' ? '10 भारतीय औद्योगिक केंद्रों (दिल्ली, मुंबई, बेंगलुरु, चेन्नई, कोलकाता आदि) में व्यापक तनाव परीक्षण।' : sc.description,
+      }
+    }
+    return sc
+  }
 
   useEffect(() => {
     const fetchVehicles = async () => {
@@ -303,10 +344,10 @@ export default function Optimization() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(90deg, #1e293b 0%, #0f172a 100%)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: '800', background: 'linear-gradient(to right, #60a5fa, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            🛰️ OR-Tools Multi-Vehicle Optimization Engine
+            {t('opt_engine_title', '🛰️ OR-Tools Multi-Vehicle Optimization Engine')}
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', marginTop: '4px' }}>
-            Phase 2: Automated Load Consolidation, Capacitated VRP solver, and Indian Route Cost Engine
+            {t('opt_engine_subtitle', 'Phase 2: Automated Load Consolidation, Capacitated VRP solver, and Indian Route Cost Engine')}
           </p>
         </div>
         <span className="badge badge-success" style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
@@ -320,25 +361,25 @@ export default function Optimization() {
           onClick={() => setActiveTab('scenarios')}
           className={`btn ${activeTab === 'scenarios' ? 'btn-primary' : 'btn-secondary'}`}
         >
-          🎭 Demo Scenarios
+          {t('tab_scenarios', '🎭 Demo Scenarios')}
         </button>
         <button
           onClick={() => setActiveTab('manual')}
           className={`btn ${activeTab === 'manual' ? 'btn-primary' : 'btn-secondary'}`}
         >
-          ⚙️ Interactive Config
+          {t('tab_custom', '⚙️ Interactive Config')}
         </button>
         <button
           onClick={() => setActiveTab('consolidation')}
           className={`btn ${activeTab === 'consolidation' ? 'btn-primary' : 'btn-secondary'}`}
         >
-          📦 Consolidation Preview
+          {t('tab_consolidation', '📦 Consolidation Preview')}
         </button>
         <button
           onClick={() => setActiveTab('seed')}
           className={`btn ${activeTab === 'seed' ? 'btn-primary' : 'btn-secondary'}`}
         >
-          💾 Synthetic Database (SEED)
+          {t('tab_seed', '💾 Synthetic Database (SEED)')}
         </button>
       </div>
 
@@ -408,47 +449,47 @@ export default function Optimization() {
           {/* Live Fleet Tracking Telematics Summary */}
           <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px', background: 'var(--color-surface,#1e1e2e)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>🚛 Real-Time Fleet Status</h3>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>{t('fleet_status_title', '🚛 Real-Time Fleet Status')}</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '6px', marginBottom: '16px' }}>
-                Monitor active transit logs, fuel efficiency levels, low fuel warnings, and operational incidents.
+                {t('fleet_status_sub', 'Monitor active transit logs, fuel efficiency levels, low fuel warnings, and operational incidents.')}
               </p>
               <Link to="/tracking" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
-                <span>Live Fleet Tracking Map</span> ➔
+                <span>{t('live_fleet_map_link', 'Live Fleet Tracking Map ➔')}</span>
               </Link>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
               <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>Active Vehicles</div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('active_vehicles', 'Active Vehicles')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#10b981', marginTop: '4px' }}>
                   {vehicles.filter(v => ['IN_TRANSIT', 'ACTIVE'].includes(v.vehicle_status)).length}
                 </div>
               </div>
               <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>Idle Vehicles</div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('idle_vehicles', 'Idle Vehicles')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>
                   {vehicles.filter(v => ['IDLE', 'STOPPED'].includes(v.vehicle_status)).length}
                 </div>
               </div>
               <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>Low Fuel Vehicles</div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('low_fuel_vehicles', 'Low Fuel Vehicles')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#ef4444', marginTop: '4px' }}>
                   {vehicles.filter(v => v.vehicle_status === 'LOW_FUEL').length}
                 </div>
               </div>
               <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>Active Incidents</div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('active_incidents', 'Active Incidents')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#dc2626', marginTop: '4px' }}>
                   {seedStatus?.incidents_count ?? 0}
                 </div>
               </div>
               <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>Delayed Vehicles</div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('delayed_vehicles', 'Delayed Vehicles')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#f59e0b', marginTop: '4px' }}>
                   {vehicles.filter(v => v.risk_level === 'HIGH').length}
                 </div>
               </div>
               <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>Total Registered Fleet</div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('total_registered_fleet', 'Total Registered Fleet')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#6366f1', marginTop: '4px' }}>
                   {vehicles.length}
                 </div>
@@ -457,65 +498,68 @@ export default function Optimization() {
           </div>
 
           <div className="card">
-            <h3 style={{ marginBottom: '12px' }}>Pre-Built DSS Evaluation Scenarios</h3>
+            <h3 style={{ marginBottom: '12px' }}>{t('prebuilt_scenarios_title', 'Pre-Built DSS Evaluation Scenarios')}</h3>
             <p style={{ marginBottom: '20px' }}>
-              Select and trigger a pre-loaded business VRP scenario. The DSS will filter compatible fleet resources and optimize routing instantly.
+              {t('prebuilt_scenarios_sub', 'Select and trigger a pre-loaded business VRP scenario. The DSS will filter compatible fleet resources and optimize routing instantly.')}
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
-              {scenarios.map((sc) => (
-                <div
-                  key={sc.scenario_number}
-                  style={{
-                    background: 'var(--color-bg-secondary)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '20px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    gap: '16px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span className="badge badge-warning">Scenario #{sc.scenario_number}</span>
-                      <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                        📦 {sc.shipment_count} shipments | 🚛 {sc.vehicle_count} trucks
-                      </span>
-                    </div>
-                    <h4 style={{ margin: '8px 0', color: 'var(--color-text-primary)' }}>{sc.title}</h4>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', minHeight: '60px' }}>
-                      {sc.description}
-                    </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
-                      {sc.highlights.map((h, i) => (
-                        <span
-                          key={i}
-                          style={{
-                            fontSize: '0.75rem',
-                            background: 'rgba(59, 130, 246, 0.1)',
-                            color: 'var(--color-brand-light)',
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(59, 130, 246, 0.2)',
-                          }}
-                        >
-                          {h}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleRunScenario(sc.scenario_number)}
-                    className="btn btn-primary btn-sm"
-                    style={{ width: '100%', justifyContent: 'center' }}
-                    disabled={isRunningScenario}
+              {scenarios.map((scRaw) => {
+                const sc = getLocalizedScenario(scRaw)
+                return (
+                  <div
+                    key={sc.scenario_number}
+                    style={{
+                      background: 'var(--color-bg-secondary)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '16px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    }}
                   >
-                    Run Optimization Scenario
-                  </button>
-                </div>
-              ))}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="badge badge-warning">Scenario #{sc.scenario_number}</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                          📦 {sc.shipment_count} shipments | 🚛 {sc.vehicle_count} trucks
+                        </span>
+                      </div>
+                      <h4 style={{ margin: '8px 0', color: 'var(--color-text-primary)' }}>{sc.title}</h4>
+                      <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', minHeight: '60px' }}>
+                        {sc.description}
+                      </p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px' }}>
+                        {sc.highlights.map((h, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              fontSize: '0.75rem',
+                              background: 'rgba(59, 130, 246, 0.1)',
+                              color: 'var(--color-brand-light)',
+                              padding: '3px 8px',
+                              borderRadius: '4px',
+                              border: '1px solid rgba(59, 130, 246, 0.2)',
+                            }}
+                          >
+                            {h}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRunScenario(sc.scenario_number)}
+                      className="btn btn-primary btn-sm"
+                      style={{ width: '100%', justifyContent: 'center' }}
+                      disabled={isRunningScenario}
+                    >
+                      {isRunningScenario ? 'Solving VRP...' : 'Run Optimization Scenario ➔'}
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
