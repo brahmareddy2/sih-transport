@@ -182,7 +182,9 @@ app.include_router(admin_router, prefix=API_PREFIX)
 
 # Phase 8: Universal Voice-First + Simple Mode User Experience
 from app.api.voice import router as voice_router
+from app.api.assistant import router as assistant_router
 app.include_router(voice_router, prefix=API_PREFIX)
+app.include_router(assistant_router, prefix=API_PREFIX)
 
 # Stub router for routes
 from app.api.stubs import routes_router

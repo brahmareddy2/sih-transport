@@ -33,6 +33,20 @@ export const DICTIONARY = {
     pa: '🏠 ਹੋਮ',
     mr: '🏠 होम',
   },
+  nav_trip_planner: {
+    en: '🗺️ Trip Planner',
+    te: '🗺️ ట్రిప్ ప్లానర్',
+    hi: '🗺️ ट्रिप प्लानर',
+    pa: '🗺️ ਸਫ਼ਰ ਪਲਾਨਰ',
+    mr: '🗺️ ट्रिप प्लॅनर',
+  },
+  trip_plan: {
+    en: 'Trip Planner',
+    te: 'ట్రిప్ ప్లానర్',
+    hi: 'ट्रिप प्लानर',
+    pa: 'ਸਫ਼ਰ ਪਲਾਨਰ',
+    mr: 'ट्रिप प्लॅनर',
+  },
   nav_driver: {
     en: '🚛 Driver',
     te: '🚛 డ్రైవర్',

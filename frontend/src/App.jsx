@@ -10,6 +10,7 @@ import WhatIfSimulator from './pages/WhatIfSimulator'
 import AnalyticsDashboard from './pages/AnalyticsDashboard'
 import DriverMode from './pages/DriverMode'
 import RoleHome from './pages/RoleHome'
+import TripPlanner from './pages/TripPlanner'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import useAuthStore from './store/authStore'
 import { useI18nStore } from './services/i18n'
@@ -104,6 +105,9 @@ function DashboardLayout({ title, roleLabel, children }) {
           {/* Primary Navigation Links */}
           <Link to="/home" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
             {t('nav_home', '🏠 Home')}
+          </Link>
+          <Link to="/trip-planner" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#6366f122', color: '#a5b4fc', border: '1px solid #6366f144' }}>
+            {t('nav_trip_planner', '🗺️ Trip Planner')}
           </Link>
           <Link to="/driver-mode" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#10b98122', color: '#10b981', border: '1px solid #10b98144' }}>
             {t('nav_driver', '🚛 Driver')}
@@ -233,6 +237,12 @@ export default function App() {
           <Route path="/driver" element={
             <DashboardLayout title="Driver Cockpit — Simple Mode" roleLabel="Lead Driver">
               <DriverMode />
+            </DashboardLayout>
+          } />
+
+          <Route path="/trip-planner" element={
+            <DashboardLayout title="Interactive Multimodal Trip Planner" roleLabel={userRoleLabel}>
+              <TripPlanner />
             </DashboardLayout>
           } />
 
