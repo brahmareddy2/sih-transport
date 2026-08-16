@@ -22,7 +22,7 @@ class Base(DeclarativeBase):
 
 
 # ── SQLAlchemy Engine ─────────────────────────────────────
-db_url = settings.database_url
+db_url = settings.effective_database_url
 
 # Fallback to SQLite local file if PostgreSQL is not reachable (e.g. running outside Docker container)
 try:
@@ -36,9 +36,12 @@ try:
     # Test connection
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
+    # Auto-create all tables in PostgreSQL
+    import app.models  # noqa: F401
+    Base.metadata.create_all(engine)
 except Exception as e:
     # Graceful fallback for local development outside Docker
-    logger.warning("PostgreSQL host unreachable (%s). Using SQLite local fallback", db_url)
+    logger.warning("PostgreSQL host unreachable (%s). Using SQLite local fallback: %s", db_url, e)
     db_url = "sqlite:///./dev_logistics.db"
     engine = create_engine(
         db_url,

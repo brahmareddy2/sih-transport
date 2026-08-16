@@ -23,14 +23,24 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # ── Database ──────────────────────────────────────────
+    database_url: str | None = None
     postgres_user: str = "logistics_user"
     postgres_password: str = "changeme"
     postgres_db: str = "logistics_db"
     postgres_host: str = "db"
     postgres_port: int = 5432
 
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def parse_database_url(cls, v):
+        if isinstance(v, str) and v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql://", 1)
+        return v
+
     @property
-    def database_url(self) -> str:
+    def effective_database_url(self) -> str:
+        if self.database_url:
+            return self.database_url
         return (
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
