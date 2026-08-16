@@ -12,13 +12,12 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # ── Install Python dependencies ───────────────────────────
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# ── Copy application code ─────────────────────────────────
-# In development, this is overridden by the volume mount in docker-compose.yml
-COPY . .
+# ── Copy backend application code ─────────────────────────
+COPY backend .
 
 # ── Expose port ───────────────────────────────────────────
 EXPOSE 8000
