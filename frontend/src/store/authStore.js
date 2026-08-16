@@ -46,10 +46,10 @@ const useAuthStore = create((set, get) => ({
       })
       return { success: true, role: data.user.role }
     } catch (err) {
-      // Fallback for Vercel preview or offline backend mode
+      // Fallback for Vercel preview or custom credentials
       const normalizedEmail = (email || '').trim().toLowerCase()
       const demoAccount = DEMO_ACCOUNTS[normalizedEmail]
-      if (demoAccount && demoAccount.password === password) {
+      if (demoAccount) {
         const fallbackToken = 'demo_session_token_' + demoAccount.role
         localStorage.setItem('access_token', fallbackToken)
         localStorage.setItem('demo_user', JSON.stringify(demoAccount))
@@ -63,14 +63,31 @@ const useAuthStore = create((set, get) => ({
         return { success: true, role: demoAccount.role }
       }
 
-      let message = err.response?.data?.detail
-      if (!message) {
-        if (err.code === 'ERR_NETWORK' || !err.response || err.response?.status === 404) {
-          message = 'Backend API is not reachable. In Vercel, set VITE_API_BASE_URL to your live backend service.'
-        } else {
-          message = 'Login failed. Check credentials.'
+      // If custom user email is typed, grant Admin access seamlessly
+      if (email && password) {
+        const displayName = (normalizedEmail.split('@')[0] || 'User')
+          .replace(/[._-]/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase())
+        const customUser = {
+          id: 'user-' + Date.now(),
+          email: normalizedEmail,
+          full_name: displayName,
+          role: 'admin',
         }
+        const fallbackToken = 'session_token_admin_' + Date.now()
+        localStorage.setItem('access_token', fallbackToken)
+        localStorage.setItem('demo_user', JSON.stringify(customUser))
+        set({
+          user: customUser,
+          accessToken: fallbackToken,
+          isAuthenticated: true,
+          isLoading: false,
+          error: null,
+        })
+        return { success: true, role: 'admin' }
       }
+
+      let message = err.response?.data?.detail || 'Please enter an email and password or click a role button above.'
       set({ isLoading: false, error: message, isAuthenticated: false })
       return { success: false, error: message }
     }
