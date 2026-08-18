@@ -9,17 +9,17 @@ export default defineConfig({
     proxy: {
       // Proxy API calls to backend — avoids CORS issues in dev
       '/api': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:8000',
+        target: process.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
         changeOrigin: true,
         rewrite: (path) => path,
       },
       '/ws': {
-        target: process.env.VITE_WS_URL || 'ws://localhost:8000',
+        target: process.env.VITE_WS_URL || 'ws://127.0.0.1:8000',
         ws: true,
         changeOrigin: true,
       },
       '/health': {
-        target: process.env.VITE_API_BASE_URL || 'http://localhost:8000',
+        target: process.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
     },
