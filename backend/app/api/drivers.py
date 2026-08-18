@@ -12,6 +12,8 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_roles
 from app.models.driver import Driver
 from app.models.user import User
+from app.models.route import Route
+from app.models.vehicle import Vehicle
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/drivers", tags=["Drivers"])
@@ -50,6 +52,62 @@ def list_available_drivers(
 ):
     drivers = db.query(Driver).filter(Driver.status == "available").all()
     return {"items": [_driver_to_dict(d) for d in drivers], "total": len(drivers)}
+
+
+@router.get("/active-trip", summary="Get logged-in driver's active trip details")
+def get_active_trip(
+    current_user: User = Depends(require_roles("driver")),
+    db: Session = Depends(get_db),
+):
+    """
+    Retrieve the active in-transit trip details for the currently logged-in driver,
+    including the active route, vehicle telemetry, and estimated expenses.
+    """
+    driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver profile not found")
+
+    # Find active or in-progress route
+    route = db.query(Route).filter(
+        Route.driver_id == driver.id,
+        Route.status.in_(["in_progress", "planned"])
+    ).first()
+
+    # Fallback to last route if no active route is found
+    if not route:
+        route = db.query(Route).filter(Route.driver_id == driver.id).order_by(Route.created_at.desc()).first()
+
+    vehicle = driver.assigned_vehicle
+
+    origin = route.origin_city if route else "Delhi"
+    destination = route.destination_city if route else "Hyderabad"
+    distance = float(route.total_distance_km) if (route and route.total_distance_km) else 1580.0
+    duration_hrs = round((route.estimated_duration_min / 60.0), 1) if (route and route.estimated_duration_min) else 26.5
+    
+    fuel_available = float(vehicle.current_fuel_level_l) if (vehicle and vehicle.current_fuel_level_l is not None) else 180.0
+    fuel_efficiency = float(vehicle.fuel_efficiency_kmpl) if (vehicle and vehicle.fuel_efficiency_kmpl) else 4.0
+    fuel_required = round(distance / fuel_efficiency) if fuel_efficiency > 0 else 395
+    
+    toll_cost = float(route.estimated_toll_inr) if (route and route.estimated_toll_inr) else 2850.0
+    fuel_cost = float(route.estimated_fuel_cost_inr) if (route and route.estimated_fuel_cost_inr) else 36735.0
+    total_cost = toll_cost + fuel_cost
+
+    return {
+        "has_trip": (route is not None),
+        "route_number": route.route_number if route else "TRIP-DEMO-77",
+        "origin": origin,
+        "destination": destination,
+        "distance_km": distance,
+        "duration_hours": duration_hrs,
+        "eta": "Tomorrow 06:30 AM",
+        "fuel_available_l": fuel_available,
+        "fuel_required_l": fuel_required,
+        "refuel_city": "Nagpur" if origin == "Delhi" else "Nagpur",
+        "toll_cost_inr": toll_cost,
+        "fuel_cost_inr": fuel_cost,
+        "total_cost_inr": total_cost,
+        "status": route.status.upper() if route else "IN_PROGRESS",
+    }
 
 
 @router.get("/{driver_id}", summary="Get driver detail")

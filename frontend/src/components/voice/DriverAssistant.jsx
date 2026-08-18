@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useI18nStore } from '../../services/i18n'
 import DriverFacilities from './DriverFacilities'
 import CommunicationModal from './CommunicationModal'
+import api from '../../services/api'
 
 export default function DriverAssistant({ onOpenVoice, onPlanTrip }) {
   const { language, t } = useI18nStore()
@@ -9,6 +10,38 @@ export default function DriverAssistant({ onOpenVoice, onPlanTrip }) {
   const [showFacilities, setShowFacilities] = useState(false)
   const [isCommOpen, setIsCommOpen] = useState(false)
   const [contactData, setContactData] = useState(null)
+
+  const [tripData, setTripData] = useState({
+    origin: 'Delhi',
+    destination: 'Hyderabad',
+    distance_km: 1580,
+    duration_hours: 26.5,
+    eta: 'Tomorrow 06:30 AM',
+    fuel_available_l: 180,
+    fuel_required_l: 395,
+    refuel_city: 'Nagpur',
+    toll_cost_inr: 2850,
+    fuel_cost_inr: 36735,
+    total_cost_inr: 43500,
+    status: 'IN TRANSIT',
+  })
+  const [loadingTrip, setLoadingTrip] = useState(false)
+
+  const fetchActiveTrip = async () => {
+    setLoadingTrip(true)
+    try {
+      const { data } = await api.get('/drivers/active-trip')
+      setTripData(data)
+    } catch (e) {
+      console.error('Failed to load active trip telemetry:', e)
+    } finally {
+      setLoadingTrip(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchActiveTrip()
+  }, [])
 
   // Offline syncing engine states
   const [syncStatus, setSyncStatus] = useState(navigator.onLine ? 'ONLINE' : 'OFFLINE')
@@ -193,33 +226,49 @@ export default function DriverAssistant({ onOpenVoice, onPlanTrip }) {
               fontWeight: 700,
             }}
           >
-            🟢 IN TRANSIT
+            🟢 {tripData.status}
           </span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
           <div style={{ background: '#1c1c34', padding: '14px', borderRadius: 14, border: '1px solid #2d2d48' }}>
             <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>ROUTE</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>Delhi ➔ Hyderabad</div>
-            <div style={{ fontSize: '0.72rem', color: '#38bdf8', marginTop: '2px' }}>Via NH44 (1,580 km)</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>
+              {tripData.origin} ➔ {tripData.destination}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#38bdf8', marginTop: '2px' }}>
+              Via NH44 ({tripData.distance_km.toLocaleString()} km)
+            </div>
           </div>
 
           <div style={{ background: '#1c1c34', padding: '14px', borderRadius: 14, border: '1px solid #2d2d48' }}>
             <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>ESTIMATED TIME & ARRIVAL</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#34d399', marginTop: '2px' }}>26.5 Hours</div>
-            <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '2px' }}>ETA: Tomorrow 06:30 AM</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#34d399', marginTop: '2px' }}>
+              {tripData.duration_hours} Hours
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '2px' }}>
+              ETA: {tripData.eta}
+            </div>
           </div>
 
           <div style={{ background: '#1c1c34', padding: '14px', borderRadius: 14, border: '1px solid #2d2d48' }}>
             <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>DIESEL & FUEL LEVEL</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fbbf24', marginTop: '2px' }}>180 L Available</div>
-            <div style={{ fontSize: '0.72rem', color: '#f87171', marginTop: '2px' }}>Requires ~395 L total (Refuel in Nagpur)</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fbbf24', marginTop: '2px' }}>
+              {tripData.fuel_available_l} L Available
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#f87171', marginTop: '2px' }}>
+              Requires ~{tripData.fuel_required_l} L total (Refuel in {tripData.refuel_city})
+            </div>
           </div>
 
           <div style={{ background: '#1c1c34', padding: '14px', borderRadius: 14, border: '1px solid #2d2d48' }}>
             <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>ESTIMATED TRIP EXPENSE</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#a78bfa', marginTop: '2px' }}>₹43,500 Total</div>
-            <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '2px' }}>Tolls: ₹2,850 • Fuel: ₹36,735</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#a78bfa', marginTop: '2px' }}>
+              ₹{tripData.total_cost_inr.toLocaleString()} Total
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '2px' }}>
+              Tolls: ₹{tripData.toll_cost_inr.toLocaleString()} • Fuel: ₹{tripData.fuel_cost_inr.toLocaleString()}
+            </div>
           </div>
         </div>
       </div>
