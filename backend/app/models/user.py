@@ -26,6 +26,9 @@ class User(Base):
         # Valid roles: admin | operator | fleet_manager | driver | customer
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    preferred_language: Mapped[str | None] = mapped_column(String(10), default="en")
+    organization_name: Mapped[str | None] = mapped_column(String(255))
+    is_approved: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

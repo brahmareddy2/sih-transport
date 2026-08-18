@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
     Use for: DB pool warmup, cache priming, background tasks.
     """
     logger.info("=" * 60)
-    logger.info("  Logistics DSS Backend starting up")
+    logger.info("  Cargo Pilot Backend starting up")
     logger.info("  Environment : %s", settings.environment)
     logger.info("  DB Host     : %s:%s", settings.postgres_host, settings.postgres_port)
     logger.info("  Redis       : %s", settings.redis_url)
@@ -90,14 +90,14 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
 
-    logger.info("Logistics DSS Backend shutting down")
+    logger.info("Cargo Pilot Backend shutting down")
 
 
 # ── FastAPI app ───────────────────────────────────────────
 app = FastAPI(
-    title="AI-Powered Logistics DSS API",
+    title="AI-Powered Cargo Pilot API",
     description=(
-        "Intelligent Transportation and Logistics Decision Support System. "
+        "Intelligent Transportation and Logistics Decision Support System (Cargo Pilot). "
         "India-specific platform covering fleet management, route optimization, "
         "disruption handling, and analytics."
     ),
@@ -195,7 +195,7 @@ app.include_router(routes_router, prefix=API_PREFIX)
 @app.get("/", include_in_schema=False)
 def root():
     return {
-        "name": "AI-Powered Logistics DSS",
+        "name": "AI-Powered Cargo Pilot",
         "version": "1.0.0-phase7",
         "docs": "/docs",
         "health": "/health",

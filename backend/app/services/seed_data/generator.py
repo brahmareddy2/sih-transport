@@ -1,5 +1,5 @@
 """
-Master synthetic data generator for the Logistics DSS.
+Master synthetic data generator for Cargo Pilot.
 
 Orchestrates generation of:
   - 50 vehicles

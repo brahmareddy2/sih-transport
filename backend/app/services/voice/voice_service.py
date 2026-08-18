@@ -400,7 +400,7 @@ class VoiceService:
                 "origin": "Mumbai",
                 "destination": "Hyderabad",
                 "eta": "Today 17:30 IST",
-                "carrier": "Logistics DSS Fleet Truck #12",
+                "carrier": "Cargo Pilot Fleet Truck #12",
             },
         }
 

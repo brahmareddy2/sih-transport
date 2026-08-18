@@ -61,3 +61,53 @@ def get_system_stats(
         "environment": get_settings().environment,
         "timestamp": datetime.now(timezone.utc),
     }
+
+
+from typing import List
+from app.schemas.auth import UserProfile
+from fastapi import HTTPException
+
+@router.get(
+    "/pending-users",
+    response_model=List[UserProfile],
+    summary="Get users pending approval",
+)
+def get_pending_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("admin")),
+):
+    """Retrieve list of inactive or unapproved users (e.g. pending admin accounts)."""
+    try:
+        pending = db.query(User).filter((User.is_active == False) | (User.is_approved == False)).all()
+    except Exception:
+        pending = db.query(User).filter(User.is_active == False).all()
+    return pending
+
+
+@router.post(
+    "/approve-user/{user_id}",
+    summary="Approve pending user account",
+)
+def approve_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("admin")),
+):
+    """Approve and activate user account."""
+    import uuid
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+
+    user = db.query(User).filter(User.id == user_uuid).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_active = True
+    if hasattr(user, "is_approved"):
+        user.is_approved = True
+    db.commit()
+    logger.info("Admin %s approved user %s", current_user.email, user.email)
+    return {"message": f"User {user.email} approved successfully", "success": True}
+

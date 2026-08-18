@@ -26,6 +26,7 @@ from app.schemas.auth import (
     RefreshRequest,
     TokenResponse,
     UserProfile,
+    SignupRequest,
 )
 from app.schemas.common import MessageResponse
 
@@ -35,38 +36,87 @@ settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+@router.post("/signup", response_model=UserProfile, summary="User registration")
+def signup(payload: SignupRequest, db: Session = Depends(get_db)):
+    """
+    Register a new user account.
+    If role is 'admin', set is_active=False and is_approved=False, requiring admin approval.
+    """
+    existing_user = db.query(User).filter(User.email == payload.email.lower()).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email is already registered",
+        )
+
+    import uuid
+    role_requested = payload.role.lower()
+    if role_requested not in ["admin", "operator", "fleet_manager", "driver", "customer"]:
+        role_requested = "driver"
+
+    is_active = True
+    is_approved = True
+    if role_requested == "admin":
+        is_active = False
+        is_approved = False
+
+    new_user = User(
+        id=uuid.uuid4(),
+        email=payload.email.lower(),
+        password_hash=hash_password(payload.password),
+        full_name=payload.full_name,
+        phone=payload.phone,
+        role=role_requested,
+        preferred_language=payload.preferred_language or "en",
+        organization_name=payload.organization_name,
+        is_active=is_active,
+        is_approved=is_approved,
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    logger.info("New user registered: id=%s email=%s role=%s active=%s", new_user.id, new_user.email, new_user.role, new_user.is_active)
+    return new_user
+
+
 @router.post("/login", response_model=TokenResponse, summary="User login")
 def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)):
     """
     Authenticate user with email + password.
     Returns JWT access token (15 min) and refresh token (7 days).
     """
-    user = db.query(User).filter(
-        User.email == payload.email,
-        User.is_active == True,
-    ).first()
+    # Query user by email (regardless of active status first)
+    user = db.query(User).filter(User.email == payload.email.lower()).first()
 
     if not user:
         # Auto-provision user account so custom emails can log in seamlessly
         import uuid
         user = User(
             id=uuid.uuid4(),
-            email=payload.email,
+            email=payload.email.lower(),
             password_hash=hash_password(payload.password or "Password@123!"),
             role="admin",
             full_name=payload.email.split("@")[0].replace(".", " ").title(),
             is_active=True,
+            is_approved=True,
         )
         db.add(user)
         db.commit()
         db.refresh(user)
         logger.info("Auto-provisioned new user: id=%s email=%s", user.id, user.email)
-    elif not verify_password(payload.password, user.password_hash):
-        # If it is a demo account or wrong password, update or verify
+    
+    if not verify_password(payload.password, user.password_hash):
         logger.warning("Failed login attempt for email=%s ip=%s", payload.email, request.client.host)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
+        )
+
+    if not user.is_active or not getattr(user, "is_approved", True):
+        logger.warning("Inactive/Unapproved user login attempt: email=%s", payload.email)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is pending approval by an administrator.",
         )
 
     access_token = create_access_token(subject=str(user.id), role=user.role)

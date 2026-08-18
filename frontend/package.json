@@ -1,8 +1,8 @@
 {
-  "name": "logistics-dss-frontend",
+  "name": "cargo-pilot-frontend",
   "private": true,
   "version": "1.0.0",
-  "description": "AI-Powered Logistics DSS — React Frontend",
+  "description": "AI-Powered Cargo Pilot — React Frontend",
   "type": "module",
   "scripts": {
     "dev": "vite",

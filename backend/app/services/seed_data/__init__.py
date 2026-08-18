@@ -1,5 +1,5 @@
 """
-Synthetic data generator for Indian logistics DSS.
+Synthetic data generator for Cargo Pilot.
 
 Generates reproducible demo data with SEED=42.
 Data is internally consistent across vehicles, drivers, shipments, and trips.

@@ -31,7 +31,7 @@ class CustomerAssistant:
                 "destination": "Hyderabad Delivery Center",
                 "current_location": "En route Pune-Solapur Highway",
                 "eta": "Today 17:30 IST",
-                "carrier": "Logistics DSS Fleet Truck #12",
+                "carrier": "Cargo Pilot Fleet Truck #12",
                 "driver_contact_masked": "+91 91XXX X3341",
             },
         }

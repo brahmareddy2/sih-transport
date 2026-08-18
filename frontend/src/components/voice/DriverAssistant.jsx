@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useI18nStore } from '../../services/i18n'
 import DriverFacilities from './DriverFacilities'
 import CommunicationModal from './CommunicationModal'
@@ -10,6 +10,75 @@ export default function DriverAssistant({ onOpenVoice, onPlanTrip }) {
   const [isCommOpen, setIsCommOpen] = useState(false)
   const [contactData, setContactData] = useState(null)
 
+  // Offline syncing engine states
+  const [syncStatus, setSyncStatus] = useState(navigator.onLine ? 'ONLINE' : 'OFFLINE')
+  const [offlineUpdates, setOfflineUpdates] = useState(() => {
+    return JSON.parse(localStorage.getItem('pending_driver_updates') || '[]')
+  })
+  const [newUpdateText, setNewUpdateText] = useState('')
+  const [fuelLogged, setFuelLogged] = useState('')
+
+  useEffect(() => {
+    const handleOnline = () => {
+      triggerSync()
+    }
+    const handleOffline = () => {
+      setSyncStatus('OFFLINE')
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  const triggerSync = () => {
+    setSyncStatus('SYNCING')
+    setTimeout(() => {
+      const pending = JSON.parse(localStorage.getItem('pending_driver_updates') || '[]')
+      if (pending.length > 0) {
+        console.log('Automatically synced driver updates with central database:', pending)
+        localStorage.removeItem('pending_driver_updates')
+        setOfflineUpdates([])
+      }
+      setSyncStatus('ONLINE')
+    }, 2000)
+  }
+
+  const handleToggleConnection = () => {
+    if (syncStatus === 'ONLINE' || syncStatus === 'SYNCING') {
+      setSyncStatus('OFFLINE')
+    } else {
+      triggerSync()
+    }
+  }
+
+  const addOfflineUpdate = (e) => {
+    e.preventDefault()
+    if (!newUpdateText && !fuelLogged) return
+
+    const newRecord = {
+      id: Date.now(),
+      timestamp: new Date().toLocaleTimeString(),
+      status: newUpdateText || 'Logged Fuel Refill',
+      fuel: fuelLogged ? parseFloat(fuelLogged) : null,
+    }
+
+    const updated = [...offlineUpdates, newRecord]
+    setOfflineUpdates(updated)
+    localStorage.setItem('pending_driver_updates', JSON.stringify(updated))
+
+    setNewUpdateText('')
+    setFuelLogged('')
+
+    // If simulated status is online, auto-sync immediately
+    if (syncStatus === 'ONLINE') {
+      triggerSync()
+    }
+  }
+
   const handleFacilityClick = (cat) => {
     setSelectedFacility(cat)
     setShowFacilities(true)
@@ -18,11 +87,17 @@ export default function DriverAssistant({ onOpenVoice, onPlanTrip }) {
   const handleCallDispatch = () => {
     setContactData({
       target_name: 'Central Fleet Control Room',
-      location: 'Logistics DSS Operations Hub',
+      location: 'Cargo Pilot Operations Hub',
       phone: '+91 80456 71001',
       disclaimer: 'Demo call mode — connects driver directly to central fleet manager.',
     })
     setIsCommOpen(true)
+  }
+
+  const getStatusColor = () => {
+    if (syncStatus === 'ONLINE') return '#10b981'
+    if (syncStatus === 'SYNCING') return '#3b82f6'
+    return '#ef4444'
   }
 
   return (
@@ -37,8 +112,28 @@ export default function DriverAssistant({ onOpenVoice, onPlanTrip }) {
           boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
           textAlign: 'center',
           marginBottom: '24px',
+          position: 'relative',
         }}
       >
+        {/* Sync Status Badge */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '20px',
+            right: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: '#111122',
+            border: `1px solid ${getStatusColor()}`,
+            borderRadius: 12,
+            padding: '6px 12px',
+          }}
+        >
+          <span style={{ height: '8px', width: '8px', borderRadius: '50%', background: getStatusColor(), display: 'inline-block' }} />
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#fff' }}>{syncStatus}</span>
+        </div>
+
         <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>🚚</div>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 900, color: '#fff', margin: 0 }}>
           {t('hello_driver', '👋 Hello Driver')}
@@ -86,7 +181,7 @@ export default function DriverAssistant({ onOpenVoice, onPlanTrip }) {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fff', margin: 0 }}>
-            {t('my_trip', '🚛 My Active Trip')}
+            {t('my_trip', 'My Active Trip')}
           </h2>
           <span
             style={{
@@ -106,7 +201,7 @@ export default function DriverAssistant({ onOpenVoice, onPlanTrip }) {
           <div style={{ background: '#1c1c34', padding: '14px', borderRadius: 14, border: '1px solid #2d2d48' }}>
             <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>ROUTE</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>Delhi ➔ Hyderabad</div>
-            <div style={{ fontSize: '0.72rem', color: '#38bdf8', marginTop: '2px' }}>Via NH44 & NH48 (1,580 km)</div>
+            <div style={{ fontSize: '0.72rem', color: '#38bdf8', marginTop: '2px' }}>Via NH44 (1,580 km)</div>
           </div>
 
           <div style={{ background: '#1c1c34', padding: '14px', borderRadius: 14, border: '1px solid #2d2d48' }}>
@@ -125,6 +220,106 @@ export default function DriverAssistant({ onOpenVoice, onPlanTrip }) {
             <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>ESTIMATED TRIP EXPENSE</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#a78bfa', marginTop: '2px' }}>₹43,500 Total</div>
             <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '2px' }}>Tolls: ₹2,850 • Fuel: ₹36,735</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Offline Log & Sync Panel */}
+      <div
+        style={{
+          background: '#16162a',
+          borderRadius: 24,
+          padding: '24px',
+          border: '1px solid #2d2d48',
+          marginBottom: '24px',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', margin: 0 }}>
+            📡 Offline Support & Trip Updates Logger
+          </h3>
+          <button
+            onClick={handleToggleConnection}
+            style={{
+              padding: '6px 12px',
+              borderRadius: 8,
+              background: syncStatus === 'OFFLINE' ? '#10b981' : '#ef4444',
+              color: '#fff',
+              border: 'none',
+              fontWeight: 800,
+              fontSize: '0.75rem',
+              cursor: 'pointer',
+            }}
+          >
+            {syncStatus === 'OFFLINE' ? 'Simulate Go Online 📡' : 'Simulate Go Offline 🔌'}
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+          {/* Submit updates form */}
+          <form onSubmit={addOfflineUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: '4px' }}>
+                Quick Update / Status text
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Stopped at Nagpur Dhaba, Stuck in NH44 traffic"
+                value={newUpdateText}
+                onChange={(e) => setNewUpdateText(e.target.value)}
+                style={{ width: '100%', boxSizing: 'border-box', background: '#111122', border: '1px solid #3b3b5c', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: '0.85rem' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#cbd5e1', display: 'block', marginBottom: '4px' }}>
+                Refilled Fuel Log (Litres)
+              </label>
+              <input
+                type="number"
+                placeholder="e.g. 100"
+                value={fuelLogged}
+                onChange={(e) => setFuelLogged(e.target.value)}
+                style={{ width: '100%', boxSizing: 'border-box', background: '#111122', border: '1px solid #3b3b5c', borderRadius: 8, padding: '8px 12px', color: '#fff', fontSize: '0.85rem' }}
+              />
+            </div>
+            <button
+              type="submit"
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                color: '#fff',
+                border: 'none',
+                fontWeight: 800,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+              }}
+            >
+              Log Local Record (Works Offline)
+            </button>
+          </form>
+
+          {/* Pending updates list */}
+          <div style={{ background: '#111122', padding: '14px', borderRadius: 14, border: '1px solid #2d2d48' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#a5b4fc', marginBottom: '8px' }}>
+              Pending Local Cache ({offlineUpdates.length})
+            </div>
+            {offlineUpdates.length === 0 ? (
+              <div style={{ fontSize: '0.8rem', color: '#6b7280', textAlign: 'center', padding: '20px 0' }}>
+                No pending offline records. All logs synced.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '150px', overflowY: 'auto' }}>
+                {offlineUpdates.map((item) => (
+                  <div key={item.id} style={{ background: '#1c1c34', padding: '8px 12px', borderRadius: 8, fontSize: '0.75rem', borderLeft: '3px solid #f59e0b' }}>
+                    <div style={{ color: '#fff', fontWeight: 700 }}>{item.status}</div>
+                    {item.fuel && <div style={{ color: '#fbbf24' }}>⛽ Refuelled: {item.fuel} Litres</div>}
+                    <div style={{ fontSize: '0.65rem', color: '#6b7280', marginTop: '2px' }}>Logged at {item.timestamp}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

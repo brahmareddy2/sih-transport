@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════
-# AI-Powered Logistics DSS — Backend Dependencies
+# AI-Powered Cargo Pilot — Backend Dependencies
 # Phase 1: Foundation only
 # ═══════════════════════════════════════════════════════════
 

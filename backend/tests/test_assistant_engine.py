@@ -24,7 +24,7 @@ from app.services.assistant.intent_engine import AssistantIntentEngine, get_assi
 from app.services.assistant.location_provider import get_location_provider
 
 _mock_admin = User(
-    id=__import__("uuid").UUID("00000000-0000-0000-0000-000000000099"),
+    id=__import__("uuid").UUID("00000000-0000-0000-0000-00000000009a"),
     email="assistant_admin@example.com",
     full_name="Assistant Admin",
     password_hash="test-hash",

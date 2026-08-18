@@ -1,4 +1,4 @@
-# SIH Logistics DSS — Troubleshooting & Diagnostics Guide
+# Cargo Pilot — Troubleshooting & Diagnostics Guide
 
 This document contains step-by-step solutions for common issues, operational checks, and fallback mechanisms during demonstrations.
 

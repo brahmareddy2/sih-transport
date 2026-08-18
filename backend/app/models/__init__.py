@@ -18,6 +18,7 @@ from app.models.notification import Notification
 from app.models.audit_log import AuditLog
 from app.models.prediction import ModelPrediction
 from app.models.return_cargo import ReturnCargoMatch
+from app.models.assistant_session import AssistantSession, AssistantMessage
 
 __all__ = [
     "User",
@@ -40,4 +41,6 @@ __all__ = [
     "AuditLog",
     "ModelPrediction",
     "ReturnCargoMatch",
+    "AssistantSession",
+    "AssistantMessage",
 ]

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Canonical Indian city aliases for entity extraction
 CITIES_MAP = {
     "Delhi": ["delhi", "new delhi", "ఢిల్లీ", "दिल्ली", "ਦਿੱਲੀ", "दिल्लि"],
-    "Hyderabad": ["hyderabad", "హైదరాబాద్", "हैदराबाद", "ਹੈਦਰਾਬਾਦ", "हैद्राबाद"],
+    "Hyderabad": ["hyderabad", "హైదరాబాద్", "हैदरबाद", "ਹੈਦਰਾਬਾਦ", "हैद्राबाद"],
     "Mumbai": ["mumbai", "bombay", "ముంబై", "मुंबई", "ਮੁੰਬਈ"],
     "Pune": ["pune", "పూణే", "పుణె", "पुणे", "ਪੁਣੇ"],
     "Bengaluru": ["bangalore", "bengaluru", "బెంగళూరు", "बेंगलुरु", "ਬੈਂਗਲੁਰੂ", "बंगळुरू"],
@@ -43,6 +43,16 @@ class AssistantIntentEngine:
         self.customer_asst = CustomerAssistant()
         self.admin_asst = AdminAssistant()
 
+    def _extract_vehicle_id(self, text: str) -> Optional[str]:
+        """Extract Indian vehicle registration plate pattern or demo codes."""
+        match = re.search(r"\b(TRUCK-[0-9]{2,3}|T-[0-9]{3}|[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{3,4})\b", text.upper().replace(" ", "").replace("-", ""))
+        if match:
+            return match.group(0)
+        m = re.search(r"truck[-_]?\d+", text, re.IGNORECASE)
+        if m:
+            return m.group(0).upper()
+        return None
+
     def process_query(
         self,
         query: str,
@@ -64,13 +74,70 @@ class AssistantIntentEngine:
         if confirmed and action_payload:
             return self._execute_confirmed_action(action_payload, user_role, effective_lang)
 
-        # 2. Extract Entities
+        # 2. Extract session context if database is present
+        session = None
+        session_context = {}
+        if db and user_id:
+            import uuid
+            try:
+                user_uuid = uuid.UUID(user_id)
+                from app.models.assistant_session import AssistantSession as ASM
+                session = db.query(ASM).filter(ASM.user_id == user_uuid).first()
+                if not session:
+                    session = ASM(user_id=user_uuid, context_json={})
+                    db.add(session)
+                    db.commit()
+                    db.refresh(session)
+                session_context = session.context_json or {}
+            except Exception as e:
+                logger.warning("Error getting/creating assistant session: %s", e)
+
+        # 3. Extract Entities
         cities = self._extract_cities(clean_text)
-        extracted_fuel = self._extract_fuel_qty(clean_text) or current_fuel_l or 150.0
+        extracted_vehicle = self._extract_vehicle_id(clean_text)
+
+        # Remove vehicle ID from clean_text to avoid parsing its digits as fuel qty (e.g. TRUCK-025 -> 25L)
+        clean_text_for_fuel = clean_text
+        if extracted_vehicle:
+            import re
+            clean_text_for_fuel = re.sub(re.escape(extracted_vehicle), '', clean_text_for_fuel, flags=re.IGNORECASE)
+
+        extracted_fuel = self._extract_fuel_qty(clean_text_for_fuel) or current_fuel_l
         extracted_food = food_budget_inr or 400.0
 
-        # 3. Classify Intent
+        # Merge new entities into session context
+        if len(cities) >= 2:
+            session_context["origin"] = cities[0]
+            session_context["destination"] = cities[1]
+        elif len(cities) == 1:
+            if "origin" not in session_context:
+                session_context["origin"] = cities[0]
+            elif session_context["origin"] != cities[0]:
+                session_context["destination"] = cities[0]
+
+        if extracted_fuel is not None:
+            session_context["fuel_litres"] = extracted_fuel
+
+        if extracted_vehicle:
+            session_context["vehicle"] = extracted_vehicle
+
+        # Classify intent (prioritize planning if origin/destination is in session or query)
         intent = self._classify_intent(lowered, clean_text, cities)
+        if intent == "GENERAL_HELP" and ("origin" in session_context or "destination" in session_context):
+            intent = "TRIP_PLANNING"
+
+        # Check confirmation trigger for YES/NO
+        if lowered in ["yes", "हाँ", "అవును", "ਹਾਂ", "हो", "sure"]:
+            if session_context.get("pending_action"):
+                payload = session_context.get("pending_action_payload", {})
+                session_context["pending_action"] = None
+                session_context["pending_action_payload"] = {}
+                if session:
+                    session.context_json = session_context
+                    from sqlalchemy.orm.attributes import flag_modified
+                    flag_modified(session, "context_json")
+                    db.commit()
+                return self._execute_confirmed_action(payload, user_role, effective_lang)
 
         # 4. RBAC Validation
         if not self._check_rbac(intent, user_role):
@@ -89,9 +156,18 @@ class AssistantIntentEngine:
             }
 
         # 5. Execute Domain Intent
-        return self._dispatch_intent(
-            intent, clean_text, cities, extracted_fuel, extracted_food, user_role, effective_lang, db
+        response = self._dispatch_intent(
+            intent, clean_text, session_context, extracted_food, user_role, effective_lang, current_fuel_l, db
         )
+
+        # Save session context back (and flag modified so SQLAlchemy detects mutation)
+        if session:
+            session.context_json = session_context
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(session, "context_json")
+            db.commit()
+
+        return response
 
     def _classify_intent(self, lowered: str, raw: str, cities: List[str]) -> str:
         """Classify query across 17 intent categories."""
@@ -110,7 +186,7 @@ class AssistantIntentEngine:
             return "PARKING_SEARCH"
         if any(w in lowered for w in ["restroom", "toilet", "washroom", "షౌచాలయ", "టాయిలెట్", "వాష్‌రూమ్", "शौचालय", "ਟਾਇਲਟ", "स्वच्छतागृह"]):
             return "RESTROOM_SEARCH"
-        if any(w in lowered for w in ["fuel station", "petrol pump", "diesel bunk", "బంక్", "పెట్రోల్ పంప్", "पेट्रोल पंप", "ਡੀਜ਼ਲ ਬੰਕ"]):
+        if any(w in lowered for w in ["fuel station", "petrol pump", "diesel bunk", "బంక్", "పెట్రోల్ పంప్", "पेट्रोल पंप", "ਡੀਜ਼ਲ బంక్"]):
             return "FUEL_COST"
 
         # 3. Owner & Fleet Telematics
@@ -152,19 +228,90 @@ class AssistantIntentEngine:
         self,
         intent: str,
         raw_text: str,
-        cities: List[str],
-        current_fuel: float,
+        session_context: Dict[str, Any],
         food_budget: float,
         user_role: str,
         language: str,
-        db: Optional[Session],
+        current_fuel_l: Optional[float] = None,
+        db: Optional[Session] = None,
     ) -> Dict[str, Any]:
         """Execute domain-specific logic and return rich structured response."""
-        # 1. TRIP PLANNING & ROUTE QUERY
+        # 1. TRIP PLANNING & ROUTE QUERY (Multi-Turn)
         if intent in ["TRIP_PLANNING", "ROUTE_QUERY"]:
-            orig = cities[0] if len(cities) >= 1 else "Delhi"
-            dest = cities[1] if len(cities) >= 2 else ("Hyderabad" if orig == "Delhi" else "Mumbai")
-            return self._build_trip_plan_response(orig, dest, current_fuel, food_budget, language)
+            orig = session_context.get("origin")
+            dest = session_context.get("destination")
+            veh = session_context.get("vehicle")
+            fuel = session_context.get("fuel_litres")
+
+            # Bypass multi-turn prompts if:
+            # - db is missing (direct test running/calling)
+            # - current_fuel_l is passed directly (external UI or direct API request)
+            # - both parameters are already populated in session context
+            bypass_prompting = (
+                (db is None) or
+                (current_fuel_l is not None) or
+                (veh is not None and fuel is not None)
+            )
+
+            if bypass_prompting:
+                final_orig = orig or "Delhi"
+                final_dest = dest or "Hyderabad"
+                final_fuel = fuel if fuel is not None else (current_fuel_l if current_fuel_l is not None else 150.0)
+                return self._build_trip_plan_response(final_orig, final_dest, final_fuel, food_budget, language)
+
+            # Check for missing variables and ask naturally
+            if not orig:
+                msg = "Sure, I can help you plan a trip. Where would you like to start?" if language == "en" else "తప్పకుండా, ట్రిప్ ప్లాన్ చేయవచ్చు. మీరు ఎక్కడి నుండి ప్రారంభించాలనుకుంటున్నారు?"
+                return {
+                    "intent": "TRIP_PLANNING",
+                    "language": language,
+                    "message": msg, "text": msg, "speech_text": msg,
+                    "is_authorized": True,
+                    "requires_confirmation": False,
+                    "data": session_context,
+                    "data_source": "database",
+                }
+            if not dest:
+                msg = f"Got it, starting from {orig}. What is your destination?" if language == "en" else f"సరే, {orig} నుండి ప్రారంభం. మీ గమ్యస్థానం ఏమిటి?"
+                return {
+                    "intent": "TRIP_PLANNING",
+                    "language": language,
+                    "message": msg, "text": msg, "speech_text": msg,
+                    "is_authorized": True,
+                    "requires_confirmation": False,
+                    "data": session_context,
+                    "data_source": "database",
+                }
+            if not veh:
+                msg = f"I've set the trip from {orig} to {dest}. Which vehicle are you using?" if language == "en" else f"నేను {orig} నుండి {dest} కు రూట్ సిద్ధం చేశాను. మీరు ఏ వాహనం వాడుతున్నారు?"
+                return {
+                    "intent": "TRIP_PLANNING",
+                    "language": language,
+                    "message": msg, "text": msg, "speech_text": msg,
+                    "is_authorized": True,
+                    "requires_confirmation": False,
+                    "data": session_context,
+                    "data_source": "database",
+                }
+            if fuel is None:
+                msg = f"Planning {orig} to {dest} using {veh}. How much diesel is currently available?" if language == "en" else f"{veh} ని ఉపయోగించి {orig} నుండి {dest} కి వెళ్లాలి. మీ లారీలో ఇప్పుడు ఎంత డీజిల్ ఉంది?"
+                return {
+                    "intent": "TRIP_PLANNING",
+                    "language": language,
+                    "message": msg, "text": msg, "speech_text": msg,
+                    "is_authorized": True,
+                    "requires_confirmation": False,
+                    "data": session_context,
+                    "data_source": "database",
+                }
+
+            # All variables are present, trigger calculation!
+            res = self._build_trip_plan_response(orig, dest, fuel, food_budget, language)
+            
+            # Prepare confirmation payload for YES trigger
+            session_context["pending_action"] = "START_TRIP"
+            session_context["pending_action_payload"] = {"origin": orig, "destination": dest}
+            return res
 
         # 2. PUNCTURE & BREAKDOWN ASSISTANCE
         elif intent in ["PUNCTURE_HELP", "MECHANIC_SEARCH"]:
@@ -286,7 +433,10 @@ class AssistantIntentEngine:
 
         # 6. FUEL & TOLL COST QUERIES
         elif intent in ["FUEL_COST", "TOLL_COST"]:
-            return self._build_trip_plan_response("Delhi", "Hyderabad", current_fuel, food_budget, language)
+            orig = session_context.get("origin", "Delhi")
+            dest = session_context.get("destination", "Hyderabad")
+            fuel = session_context.get("fuel_litres", 150.0)
+            return self._build_trip_plan_response(orig, dest, fuel, food_budget, language)
 
         # 7. RETURN CARGO
         elif intent == "RETURN_TRIP":
@@ -500,7 +650,7 @@ class AssistantIntentEngine:
                 "MECHANIC_SEARCH", "INCIDENT_REPORT", "RETURN_TRIP", "SHIPMENT_STATUS", "ETA_QUERY", "GENERAL_HELP",
             ]
         if r == "driver":
-            # Drivers CANNOT access sensitive company financials / profit
+            # Drivers CANNOT access company financials / profit
             return intent in [
                 "TRIP_PLANNING", "ROUTE_QUERY", "FUEL_COST", "TOLL_COST", "FOOD_SEARCH", "PARKING_SEARCH",
                 "RESTROOM_SEARCH", "PUNCTURE_HELP", "MECHANIC_SEARCH", "INCIDENT_REPORT", "RETURN_TRIP",

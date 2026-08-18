@@ -56,6 +56,13 @@ export default function TripPlanner() {
   const [loading, setLoading] = useState(false)
   const [tripData, setTripData] = useState(null)
   const [showReturnModal, setShowReturnModal] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Load initial plan or fetch
   useEffect(() => {
@@ -185,7 +192,7 @@ export default function TripPlanner() {
       </div>
 
       {/* Main Grid: Left Route Summary + Right Interactive Map */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(340px, 1.2fr) minmax(360px, 1.8fr)', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(340px, 1.2fr) minmax(360px, 1.8fr)', gap: '24px' }}>
         {/* LEFT COLUMN: KPI Metrics, Fuel, Tolls, Food, Total Cost */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* 1. Distance & Driving Duration Card */}

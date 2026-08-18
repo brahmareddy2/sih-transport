@@ -26,6 +26,13 @@ function DashboardLayout({ title, roleLabel, children }) {
   const { simpleMode, t } = useI18nStore()
   const [unreadCount, setUnreadCount] = useState(0)
   const [isVoiceOpen, setIsVoiceOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     async function checkNotifs() {
@@ -41,8 +48,75 @@ function DashboardLayout({ title, roleLabel, children }) {
     return () => clearInterval(timer)
   }, [])
 
+  const role = user?.role || 'driver'
+  
+  // Navigation Links based on role
+  const NAV_ITEMS_BY_ROLE = {
+    admin: [
+      { path: '/home', label: '🏠 Home' },
+      { path: '/operator', label: '🛰️ Optimization' },
+      { path: '/tracking', label: '📍 Live GPS' },
+      { path: '/incidents', label: '🚨 Incidents' },
+      { path: '/return-cargo', label: '🔄 Return Cargo' },
+      { path: '/ml', label: '📊 AI/ML' },
+      { path: '/what-if', label: '⚡ What-If' },
+      { path: '/analytics', label: '📈 Analytics' },
+    ],
+    operator: [
+      { path: '/home', label: '🏠 Home' },
+      { path: '/operator', label: '🛰️ Route Optimization' },
+      { path: '/tracking', label: '📍 Live GPS' },
+      { path: '/incidents', label: '🚨 Incidents' },
+      { path: '/return-cargo', label: '🔄 Return Cargo' },
+    ],
+    fleet_manager: [
+      { path: '/home', label: '🏠 Home' },
+      { path: '/tracking', label: '📍 GPS Tracking' },
+      { path: '/analytics', label: '📈 Analytics' },
+      { path: '/incidents', label: '🛠️ Incident Recovery' },
+    ],
+    driver: [
+      { path: '/home', label: '🏠 Home' },
+      { path: '/trip-planner', label: '🗺️ Trip Planner' },
+      { path: '/driver-mode', label: '🚛 Driver Cockpit' },
+    ],
+    customer: [
+      { path: '/home', label: '🏠 Home' },
+      { path: '/tracking', label: '📍 Track Carrier' },
+      { path: '/analytics', label: '📈 My Analytics' },
+    ],
+  }
+
+  const items = NAV_ITEMS_BY_ROLE[role] || NAV_ITEMS_BY_ROLE.driver
+  const bottomNavItems = items.slice(0, 4)
+
   return (
-    <div style={{ padding: '20px', maxWidth: '1440px', margin: '0 auto', fontFamily: "'Inter', sans-serif" }}>
+    <div
+      style={{
+        padding: '20px',
+        maxWidth: '1440px',
+        margin: '0 auto',
+        fontFamily: "'Inter', sans-serif",
+        paddingBottom: isMobile ? '80px' : '20px',
+        position: 'relative',
+      }}
+    >
+      {/* Low-opacity background watermark logo */}
+      <img
+        src="/logo.png"
+        alt="Watermark"
+        style={{
+          position: 'fixed',
+          bottom: '5%',
+          left: '5%',
+          width: '25%',
+          maxWidth: '220px',
+          opacity: 0.02,
+          pointerEvents: 'none',
+          zIndex: 0,
+        }}
+      />
+
       <header
         style={{
           display: 'flex',
@@ -53,13 +127,16 @@ function DashboardLayout({ title, roleLabel, children }) {
           paddingBottom: '16px',
           flexWrap: 'wrap',
           gap: '12px',
+          zIndex: 10,
+          position: 'relative',
         }}
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <img src="/logo.png" alt="Logo" style={{ height: '24px', opacity: 0.9 }} />
             <Link to="/home" style={{ textDecoration: 'none' }}>
-              <h1 style={{ fontSize: '1.6rem', fontWeight: '800', margin: 0, color: '#fff' }}>
-                {t('app_title', 'Logistics DSS')}
+              <h1 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: '#fff' }}>
+                {t('app_title', 'CARGO PILOT')}
               </h1>
             </Link>
             <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: '#6366f122', color: '#a5b4fc', border: '1px solid #6366f144' }}>
@@ -102,37 +179,21 @@ function DashboardLayout({ title, roleLabel, children }) {
           {/* Simple Mode Toggle */}
           <SimpleModeToggle />
 
-          {/* Primary Navigation Links */}
-          <Link to="/home" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            {t('nav_home', '🏠 Home')}
-          </Link>
-          <Link to="/trip-planner" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#6366f122', color: '#a5b4fc', border: '1px solid #6366f144' }}>
-            {t('nav_trip_planner', '🗺️ Trip Planner')}
-          </Link>
-          <Link to="/driver-mode" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#10b98122', color: '#10b981', border: '1px solid #10b98144' }}>
-            {t('nav_driver', '🚛 Driver')}
-          </Link>
-          <Link to="/operator" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            {t('nav_optimization', '🛰️ Optimization')}
-          </Link>
-          <Link to="/tracking" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            {t('nav_gps', '📍 Live GPS')}
-          </Link>
-          <Link to="/incidents" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            {t('nav_incidents', '🚨 Incidents')}
-          </Link>
-          <Link to="/return-cargo" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            {t('nav_return_cargo', '🔄 Return Cargo')}
-          </Link>
-          <Link to="/ml" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            {t('nav_ml', '📊 AI/ML')}
-          </Link>
-          <Link to="/what-if" className="btn btn-primary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#4f46e5' }}>
-            {t('nav_what_if', '⚡ What-If')}
-          </Link>
-          <Link to="/analytics" className="btn btn-primary btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', background: '#059669' }}>
-            {t('nav_analytics', '📈 Analytics')}
-          </Link>
+          {/* Render Header links only if NOT mobile to save screen estate */}
+          {!isMobile && items.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className="btn btn-secondary btn-sm"
+              style={{
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              {item.label}
+            </Link>
+          ))}
 
           {unreadCount > 0 && (
             <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 800, padding: '4px 8px', borderRadius: 12 }}>
@@ -145,12 +206,52 @@ function DashboardLayout({ title, roleLabel, children }) {
         </div>
       </header>
 
-      <div>
+      {/* Mobile Bottom Navigation Bar */}
+      {isMobile && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            background: '#131326f2',
+            borderTop: '1px solid #2d2d48',
+            display: 'flex',
+            justifyContent: 'space-around',
+            alignItems: 'center',
+            zIndex: 9999,
+            padding: '8px 0 12px',
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          {bottomNavItems.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              style={{
+                textDecoration: 'none',
+                color: '#9ca3af',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '2px',
+              }}
+            >
+              <span style={{ fontSize: '1.25rem' }}>{item.label.split(' ')[0]}</span>
+              <span>{item.label.split(' ').slice(1).join(' ')}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <div style={{ position: 'relative', zIndex: 1 }}>
         {children || (
           <div className="card">
             <h3>Operational Dashboard</h3>
             <p className="mt-4" style={{ color: 'var(--color-text-secondary)' }}>
-              Logistics DSS Fleet portal configured with Universal Voice Assistant, Real-time GPS Tracking, OR-Tools optimization, and AI models.
+              Cargo Pilot Fleet portal configured with Universal Voice Assistant, Real-time GPS Tracking, OR-Tools optimization, and AI models.
             </p>
           </div>
         )}
@@ -223,7 +324,7 @@ export default function App() {
         <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
           {/* Phase 8 Role Home & Simple Driver Interfaces */}
           <Route path="/home" element={
-            <DashboardLayout title="Logistics DSS — Home" roleLabel={userRoleLabel}>
+            <DashboardLayout title="Cargo Pilot — Home" roleLabel={userRoleLabel}>
               <RoleHome />
             </DashboardLayout>
           } />

@@ -52,9 +52,13 @@ api.interceptors.response.use(
           // Refresh failed — clear auth state
           localStorage.removeItem('access_token')
           localStorage.removeItem('refresh_token')
+          localStorage.removeItem('demo_user')
           window.location.href = '/login'
         }
       } else {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        localStorage.removeItem('demo_user')
         window.location.href = '/login'
       }
     }

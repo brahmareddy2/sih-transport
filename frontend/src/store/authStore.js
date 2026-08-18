@@ -93,10 +93,11 @@ const useAuthStore = create((set, get) => ({
     }
   },
 
-  logout: async () => {
-    try {
-      await api.post('/auth/logout')
-    } catch { /* ignore logout errors */ }
+  logout: () => {
+    // Fire-and-forget backend notification
+    api.post('/auth/logout').catch(() => {})
+
+    // Instantly clear local storage and state
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('demo_user')

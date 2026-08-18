@@ -32,9 +32,21 @@ class UserProfile(BaseModel):
     role: str
     phone: str | None = None
     is_active: bool
+    preferred_language: str | None = "en"
+    organization_name: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class SignupRequest(BaseModel):
+    full_name: str = Field(..., min_length=2)
+    email: EmailStr
+    password: str = Field(..., min_length=6)
+    phone: str | None = None
+    preferred_language: str | None = "en"
+    organization_name: str | None = None
+    role: str = "driver"
 
 
 class ChangePasswordRequest(BaseModel):

@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuthStore } from '../store/authStore'
+import useAuthStore from '../store/authStore'
 import { useI18nStore } from '../services/i18n'
 import VoiceAssistantModal from '../components/voice/VoiceAssistantModal'
 import UniversalSearchBar from '../components/common/UniversalSearchBar'
+import api from '../services/api'
 
 export default function RoleHome() {
   const { user } = useAuthStore()
@@ -11,8 +12,37 @@ export default function RoleHome() {
   const navigate = useNavigate()
   const [isVoiceOpen, setIsVoiceOpen] = useState(false)
   const [initialVoiceQuery, setInitialVoiceQuery] = useState('')
+  const [pendingUsers, setPendingUsers] = useState([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
 
   const role = user?.role || 'operator'
+
+  useEffect(() => {
+    if (role === 'admin') {
+      fetchPendingUsers()
+    }
+  }, [role])
+
+  const fetchPendingUsers = async () => {
+    setLoadingUsers(true)
+    try {
+      const { data } = await api.get('/admin/pending-users')
+      setPendingUsers(data || [])
+    } catch (e) {
+      console.error('Error fetching pending users:', e)
+    } finally {
+      setLoadingUsers(false)
+    }
+  }
+
+  const handleApprove = async (userId) => {
+    try {
+      await api.post(`/admin/approve-user/${userId}`)
+      fetchPendingUsers()
+    } catch (e) {
+      alert('Failed to approve user account.')
+    }
+  }
 
   const handleSearchSubmit = (query) => {
     setInitialVoiceQuery(query)
@@ -30,8 +60,8 @@ export default function RoleHome() {
       { icon: '🔄', title: 'RETURN LOADS', desc: 'Find return cargo to eliminate empty return miles', path: '/return-cargo', accent: '#8b5cf6' },
     ],
     operator: [
-      { icon: '🎤', title: 'ASK LOGISTICS DSS', desc: 'Voice query for fleet status, delayed shipments, bottlenecks', action: () => { setInitialVoiceQuery(''); setIsVoiceOpen(true); }, accent: '#6366f1', hero: true },
-      { icon: '🚛', title: 'FLEET DIRECTORY', desc: 'Manage 50 active vehicles and drivers across India', path: '/tracking', accent: '#10b981' },
+      { icon: '🎤', title: 'ASK CARGO PILOT', desc: 'Voice query for fleet status, delayed shipments, bottlenecks', action: () => { setInitialVoiceQuery(''); setIsVoiceOpen(true); }, accent: '#6366f1', hero: true },
+      { icon: '🚛', title: 'FLEET DIRECTORY', desc: 'Manage active vehicles and drivers across India', path: '/tracking', accent: '#10b981' },
       { icon: '📦', title: 'SHIPMENTS & CONSOLIDATION', desc: 'Multi-order load consolidation and capacity planning', path: '/operator', accent: '#06b6d4' },
       { icon: '🛣️', title: 'ROUTE OPTIMIZATION', desc: 'Google OR-Tools CVRPTW solver with 5 preset scenarios', path: '/operator', accent: '#3b82f6' },
       { icon: '🚨', title: 'INCIDENTS & RECOVERY', desc: 'Simulate disruptions and review multi-criteria recovery plans', path: '/incidents', accent: '#ef4444' },
@@ -41,7 +71,7 @@ export default function RoleHome() {
       { icon: '🎤', title: 'ASK FLEET ASSISTANT', desc: 'Query available vehicles, fuel expenses, and driver safety', action: () => { setInitialVoiceQuery(''); setIsVoiceOpen(true); }, accent: '#6366f1', hero: true },
       { icon: '🚛', title: 'ACTIVE FLEET TELEMATICS', desc: 'Real-time vehicle health, speed, and fuel consumption', path: '/tracking', accent: '#10b981' },
       { icon: '💰', title: 'COST & FUEL ANALYTICS', desc: 'Operational expense breakdown and fuel cost optimization', path: '/analytics', accent: '#f59e0b' },
-      { icon: '🔄', title: 'RETURN CARGO / BACKHAUL', desc: '36.2% empty-km reduction with high-score freight matching', path: '/return-cargo', accent: '#8b5cf6' },
+      { icon: '🔄', title: 'RETURN CARGO / BACKHAUL', desc: '36.2% empty-km reduction with freight matching', path: '/return-cargo', accent: '#8b5cf6' },
       { icon: '⚡', title: 'WHAT-IF SIMULATOR', desc: '9 contingency disruption scenarios with before/after matrix', path: '/what-if', accent: '#06b6d4' },
       { icon: '🤖', title: 'AI MODEL REGISTRY', desc: 'Demand forecasting, delay risk classifier, and ANN diagnostics', path: '/ml', accent: '#ec4899' },
     ],
@@ -54,8 +84,8 @@ export default function RoleHome() {
     ],
     admin: [
       { icon: '🎤', title: 'EXECUTIVE VOICE ASSISTANT', desc: 'System-wide voice query for fleet metrics, costs, and audit logs', action: () => { setInitialVoiceQuery(''); setIsVoiceOpen(true); }, accent: '#6366f1', hero: true },
-      { icon: '📊', title: 'EXECUTIVE OVERVIEW', desc: 'Fleet KPIs, cost savings, active incidents, and SLA metrics', path: '/admin', accent: '#10b981' },
-      { icon: '🚛', title: 'FLEET & GPS TRACKING', desc: '50-vehicle real-time map, fuel gauges, and simulation controls', path: '/tracking', accent: '#06b6d4' },
+      { icon: '📊', title: 'EXECUTIVE OVERVIEW', desc: 'Fleet KPIs, cost savings, active incidents, and SLA metrics', path: '/analytics', accent: '#10b981' },
+      { icon: '🚛', title: 'FLEET & GPS TRACKING', desc: 'Active real-time map, fuel gauges, and simulation controls', path: '/tracking', accent: '#06b6d4' },
       { icon: '🧠', title: 'OR-TOOLS OPTIMIZATION', desc: 'Capacity, time windows, and multi-vehicle route optimization', path: '/operator', accent: '#3b82f6' },
       { icon: '🚨', title: 'INCIDENT & DISRUPTION DSS', desc: 'Ranked recovery plans and automated rerouting protocols', path: '/incidents', accent: '#ef4444' },
       { icon: '🤖', title: 'MACHINE LEARNING & ANOMALIES', desc: 'Demand forecasting, delay classifier, and model health', path: '/ml', accent: '#ec4899' },
@@ -93,7 +123,7 @@ export default function RoleHome() {
       >
         <div>
           <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: 1 }}>
-            {role.toUpperCase()} PORTAL
+            {role.toUpperCase()} COCKPIT
           </div>
           <h1 style={{ margin: '6px 0 0', fontSize: '2rem', fontWeight: 900, color: '#fff' }}>
             Welcome back, {user?.full_name || 'User'}
@@ -129,7 +159,92 @@ export default function RoleHome() {
         </button>
       </div>
 
-      {/* 3. Action Tiles Grid */}
+      {/* 3. Pending User Approvals Panel (Admin Only) */}
+      {role === 'admin' && pendingUsers.length > 0 && (
+        <div
+          style={{
+            background: '#1a102f',
+            border: '1px solid #7c3aed66',
+            borderRadius: 20,
+            padding: '20px',
+            marginBottom: '28px',
+            boxShadow: '0 8px 24px rgba(124, 58, 237, 0.15)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f3e8ff', margin: 0 }}>
+              🛡️ Pending Security Role Approvals ({pendingUsers.length})
+            </h2>
+            <button
+              onClick={fetchPendingUsers}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#c084fc',
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontSize: '0.85rem',
+              }}
+            >
+              🔄 Refresh
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {pendingUsers.map((pUser) => (
+              <div
+                key={pUser.id}
+                style={{
+                  background: '#110b21',
+                  border: '1px solid #332554',
+                  borderRadius: 12,
+                  padding: '14px 18px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 800, color: '#fff', fontSize: '0.95rem' }}>
+                    {pUser.full_name}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '2px' }}>
+                    Email: <span style={{ color: '#e9d5ff' }}>{pUser.email}</span> | Org: <span style={{ color: '#e9d5ff' }}>{pUser.organization_name || 'N/A'}</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>
+                    Requested Role:{' '}
+                    <span style={{ color: '#f472b6', fontWeight: 800, textTransform: 'uppercase' }}>
+                      {pUser.role.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleApprove(pUser.id)}
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    border: 'none',
+                    color: '#fff',
+                    borderRadius: 8,
+                    padding: '8px 16px',
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.03)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                >
+                  Approve Account ✓
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Action Tiles Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '18px' }}>
         {tiles.map((tile, idx) => (
           <div
