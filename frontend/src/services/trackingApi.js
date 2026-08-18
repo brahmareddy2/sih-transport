@@ -43,7 +43,17 @@ export const stopSimulation = (vehicleId) =>
  * @param {function} onStatusChange - Callback indicating connection status ('CONNECTED' | 'RECONNECTING' | 'OFFLINE')
  */
 export function connectTrackingWs(token, onMessage, onStatusChange) {
-  const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+  const getSmartTrackingBaseUrl = () => {
+    const envVal = import.meta.env.VITE_API_BASE_URL || ''
+    if (envVal) return envVal.replace(/\/+$/, '')
+    const host = window.location.hostname
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+      return ''
+    }
+    return 'http://localhost:8000'
+  }
+
+  const BASE_URL = getSmartTrackingBaseUrl()
   
   // Format WS URL
   let wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'

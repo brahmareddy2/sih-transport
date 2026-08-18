@@ -5,7 +5,17 @@
 import axios from 'axios'
 import useAuthStore from '../store/authStore'
 
-const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+const getSmartVoiceBaseUrl = () => {
+  const envVal = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''
+  if (envVal) return envVal.replace(/\/+$/, '')
+  const host = window.location.hostname
+  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+    return ''
+  }
+  return 'http://localhost:8000'
+}
+
+const API_BASE = getSmartVoiceBaseUrl()
 
 const getAuthHeaders = () => {
   const token = useAuthStore.getState().accessToken

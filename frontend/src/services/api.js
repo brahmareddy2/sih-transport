@@ -6,7 +6,17 @@
  */
 import axios from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const getSmartApiBaseUrl = () => {
+  const envVal = import.meta.env.VITE_API_BASE_URL || ''
+  if (envVal) return envVal.replace(/\/+$/, '')
+  const host = window.location.hostname
+  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+    return ''
+  }
+  return 'http://localhost:8000'
+}
+
+const BASE_URL = getSmartApiBaseUrl()
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
