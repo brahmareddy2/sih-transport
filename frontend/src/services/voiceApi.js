@@ -9,7 +9,15 @@ const getSmartVoiceBaseUrl = () => {
   const envVal = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || ''
   if (envVal) return envVal.replace(/\/+$/, '')
   const host = window.location.hostname
-  if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+  if (
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '0.0.0.0' ||
+    host.endsWith('.loca.lt') ||
+    host.endsWith('.ngrok.io') ||
+    host.endsWith('.ngrok-free.app') ||
+    host.includes('tunnel')
+  ) {
     return ''
   }
   return 'http://localhost:8000'
