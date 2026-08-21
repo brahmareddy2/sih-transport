@@ -56,12 +56,17 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
+    # ── Google Maps ───────────────────────────────────────
+    google_maps_api_key: str | None = None
+
     # ── CORS ──────────────────────────────────────────────
     backend_cors_origins: List[str] = [
         "http://localhost:5173",
         "http://localhost:5174",
         "http://localhost:3000",
         "https://sih-transport-opal.vercel.app",
+        "https://sih-transport-ebon.vercel.app",
+        "https://sih-transport-ebon.vercel.app/",
         "*",
     ]
 

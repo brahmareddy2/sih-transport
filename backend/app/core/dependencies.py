@@ -64,10 +64,15 @@ def require_roles(*allowed_roles: str):
         def admin_route(user = Depends(require_roles("admin"))):
             ...
     """
+    # Map operator/fleet_manager to fleet_operator for backward compatibility & safety
+    mapped_roles = set(allowed_roles)
+    if "operator" in mapped_roles or "fleet_manager" in mapped_roles:
+        mapped_roles.add("fleet_operator")
+
     def role_checker(
         current_user: Annotated[User, Depends(get_current_user)],
     ) -> User:
-        if current_user.role not in allowed_roles:
+        if current_user.role not in mapped_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Access denied. Required roles: {list(allowed_roles)}",
@@ -81,7 +86,7 @@ def require_roles(*allowed_roles: str):
 # Use these as Depends() arguments in route handlers
 
 AdminOnly = Depends(require_roles("admin"))
-OperatorOrAbove = Depends(require_roles("admin", "operator"))
-FleetManagerOrAbove = Depends(require_roles("admin", "fleet_manager"))
-AnyStaff = Depends(require_roles("admin", "operator", "fleet_manager", "driver"))
+OperatorOrAbove = Depends(require_roles("admin", "fleet_operator"))
+FleetManagerOrAbove = Depends(require_roles("admin", "fleet_operator"))
+AnyStaff = Depends(require_roles("admin", "fleet_operator", "driver"))
 AnyAuthenticated = Depends(get_current_user)

@@ -75,6 +75,31 @@ INDIAN_CITIES: dict[str, dict] = {
         "state": "Gujarat", "zone": "west",
         "is_metro": False,
     },
+    "Srikakulam": {
+        "lat": 18.3160, "lon": 83.8967,
+        "state": "Andhra Pradesh", "zone": "south",
+        "is_metro": False,
+    },
+    "Rajam": {
+        "lat": 18.4654, "lon": 83.6584,
+        "state": "Andhra Pradesh", "zone": "south",
+        "is_metro": False,
+    },
+    "Vijayawada": {
+        "lat": 16.5062, "lon": 80.6480,
+        "state": "Andhra Pradesh", "zone": "south",
+        "is_metro": False,
+    },
+    "Visakhapatnam": {
+        "lat": 17.6868, "lon": 83.2185,
+        "state": "Andhra Pradesh", "zone": "south",
+        "is_metro": False,
+    },
+    "Guntur": {
+        "lat": 16.3067, "lon": 80.4365,
+        "state": "Andhra Pradesh", "zone": "south",
+        "is_metro": False,
+    },
 }
 
 CITY_NAMES = list(INDIAN_CITIES.keys())

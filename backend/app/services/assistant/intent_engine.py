@@ -24,11 +24,16 @@ CITIES_MAP = {
     "Mumbai": ["mumbai", "bombay", "ముంబై", "मुंबई", "ਮੁੰਬਈ"],
     "Pune": ["pune", "పూణే", "పుణె", "पुणे", "ਪੁਣੇ"],
     "Bengaluru": ["bangalore", "bengaluru", "బెంగళూరు", "बेंगलुरु", "ਬੈਂਗਲੁਰੂ", "बंगळुरू"],
+    "Bengaluru": ["bangalore", "bengaluru", "బెంగళూరు", "बेंगलुरु", "ਬੈਂਗਲુરੂ", "बंगळुरू"],
     "Chennai": ["chennai", "madras", "చెన్నై", "चेन्नई", "ਚੇਨਈ"],
     "Kolkata": ["kolkata", "calcutta", "కోల్‌కతా", "कोलकाता", "ਕੋਲਕਾਤਾ"],
     "Ahmedabad": ["ahmedabad", "అహ్మదాబాద్", "अहमदाबाद", "ਅਹਿਮਦਾਬਾਦ"],
     "Jaipur": ["jaipur", "జైపూర్", "जयपुर", "ਜੈਪੁਰ"],
-    "Nagpur": ["nagpur", "నాగ్‌పూర్", "నాగపూర్", "नागपुर", "ਨਾਗਪੁਰ"],
+    "Nagpur": ["nagpur", "నాగ్‌పూర్", "నాగపూర్", "नागपुर", "ਨਾగਪੁਰ"],
+    "Srikakulam": ["srikakulam", "srikakulum", "శ్రీకాకుళం", "श्रीकाकुलम"],
+    "Vijayawada": ["vijayawada", "విజయవాడ", "विजयवाड़ा", "viyawada"],
+    "Visakhapatnam": ["visakhapatnam", "vizag", "విశాఖపట్నం", "विशाखापत्तनम"],
+    "Guntur": ["guntur", "గుంటూరు", "गुंटूर"],
 }
 
 
@@ -524,10 +529,15 @@ class AssistantIntentEngine:
         est_net_profit_inr = est_freight_revenue_inr - total_trip_cost_inr
 
         # Multi-Route Options
+        corridor_name = corridor.get("corridor_name", f"{origin} ➔ {destination}")
+        is_nh16 = "nh16" in corridor_name.lower() or "nh-16" in corridor_name.lower()
+        best_highlights = ["Coastal NH16 Section", "High Dhaba Density", "FastAG 100% Enabled"] if is_nh16 else ["Smooth 4-lane NH44", "High Dhaba Density", "FastAG 100% Enabled"]
+        best_name = f"Best Route ({corridor_name})"
+
         route_options = [
             {
                 "id": "best_route",
-                "name": "Best Route (NH44 Main Freight Corridor)",
+                "name": best_name,
                 "distance_km": dist_km,
                 "duration_hours": hours,
                 "fuel_litres": fuel_required_l,
@@ -535,7 +545,7 @@ class AssistantIntentEngine:
                 "toll_cost_inr": toll_cost_inr,
                 "food_cost_inr": food_cost_inr,
                 "total_cost_inr": total_trip_cost_inr,
-                "highlights": ["Smooth 4-lane NH44", "High Dhaba Density", "FastAG 100% Enabled"],
+                "highlights": best_highlights,
             },
             {
                 "id": "fastest_route",
@@ -641,9 +651,11 @@ class AssistantIntentEngine:
     def _check_rbac(self, intent: str, role: str) -> bool:
         """Enforce strict RBAC permissions across all intents."""
         r = (role or "driver").lower()
-        if r in ["admin", "operator"]:
+        if r in ["operator", "fleet_manager"]:
+            r = "fleet_operator"
+        if r in ["admin", "fleet_operator"]:
             return True
-        if r in ["fleet_manager", "owner"]:
+        if r in ["fleet_operator", "owner"]:
             return intent in [
                 "TRIP_PLANNING", "ROUTE_QUERY", "FUEL_COST", "TOLL_COST", "FOOD_SEARCH", "PARKING_SEARCH",
                 "RESTROOM_SEARCH", "VEHICLE_LOCATION", "PROFIT_QUERY", "EXPENSE_QUERY", "PUNCTURE_HELP",
@@ -705,6 +717,32 @@ class AssistantIntentEngine:
                     if canonical not in found:
                         found.append(canonical)
                     break
+        
+        # Fallback regex city extraction if <= 1 city is found
+        if len(found) < 2:
+            # Check for English pattern: "[CityA] to [CityB]"
+            match = re.search(r'(?:from\s+)?([a-zA-Z]{3,15})\s+to\s+([a-zA-Z]{3,15})', text, re.IGNORECASE)
+            if match:
+                city1 = match.group(1).strip().capitalize()
+                city2 = match.group(2).strip().capitalize()
+                stop_words = ["Plan", "Trip", "Travel", "Go", "Me", "Route", "How", "Show", "Lorry", "Truck", "My", "The", "Yes", "Confirm", "Search"]
+                if city1 not in stop_words and city2 not in stop_words:
+                    if city1 not in found:
+                        found.append(city1)
+                    if city2 not in found:
+                        found.append(city2)
+            
+            # Check for Telugu pattern: "[CityA] నుండి [CityB]"
+            te_match = re.search(r'([\u0C00-\u0C7F]+)\s*(?:నుండి|టు|నుంచి)\s*([\u0C00-\u0C7F]+)', text)
+            if te_match:
+                city1 = te_match.group(1).strip()
+                city2 = te_match.group(2).strip()
+                te_stop_words = ["నేను", "వెళ్ళాలి", "నాకు", "ఒక", "రూట్"]
+                if city1 not in te_stop_words and city2 not in te_stop_words:
+                    if city1 not in found:
+                        found.append(city1)
+                    if city2 not in found:
+                        found.append(city2)
         return found
 
     def _extract_fuel_qty(self, text: str) -> Optional[float]:

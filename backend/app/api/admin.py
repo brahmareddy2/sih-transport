@@ -111,3 +111,98 @@ def approve_user(
     logger.info("Admin %s approved user %s", current_user.email, user.email)
     return {"message": f"User {user.email} approved successfully", "success": True}
 
+
+from app.schemas.auth import SignupRequest
+from app.core.security import hash_password
+
+@router.post(
+    "/create-internal-user",
+    response_model=UserProfile,
+    summary="Create internal user (Admin/Operator) by an existing Admin",
+)
+def create_internal_user(
+    payload: SignupRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("admin")),
+):
+    """
+    Register an internal user (Admin or Operator) directly.
+    Only existing Admins are authorized to call this.
+    """
+    existing_user = db.query(User).filter(User.email == payload.email.lower()).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=409,
+            detail="Email is already registered",
+        )
+
+    import uuid
+    role_requested = payload.role.lower()
+    if role_requested not in ["admin", "operator", "fleet_manager", "driver", "customer"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid role requested",
+        )
+
+    new_user = User(
+        id=uuid.uuid4(),
+        email=payload.email.lower(),
+        password_hash=hash_password(payload.password),
+        full_name=payload.full_name,
+        phone=payload.phone,
+        role=role_requested,
+        preferred_language=payload.preferred_language or "en",
+        organization_name=payload.organization_name,
+        is_active=True,
+        is_approved=True,
+    )
+    db.add(new_user)
+
+    try:
+        if role_requested == "driver":
+            if not payload.license_number:
+                raise HTTPException(status_code=400, detail="License number is required for driver")
+            from app.models.driver import Driver
+            profile = Driver(
+                id=uuid.uuid4(),
+                user_id=new_user.id,
+                employee_id=f"EMP-{uuid.uuid4().hex[:8].upper()}",
+                license_number=payload.license_number,
+                license_type=payload.license_type or "LMV",
+                status="available",
+            )
+            db.add(profile)
+        elif role_requested == "fleet_manager":
+            from app.models.fleet_manager import FleetManagerProfile
+            profile = FleetManagerProfile(
+                id=uuid.uuid4(),
+                user_id=new_user.id,
+                managed_fleet_size=payload.managed_fleet_size or 0,
+                region=payload.region or "National",
+            )
+            db.add(profile)
+        elif role_requested == "customer":
+            company_name_val = payload.company_name or payload.organization_name or "Internal Organization"
+            from app.models.enterprise_customer import EnterpriseCustomerProfile
+            profile = EnterpriseCustomerProfile(
+                id=uuid.uuid4(),
+                user_id=new_user.id,
+                company_name=company_name_val,
+                gst_number=payload.gst_number,
+                billing_address=payload.billing_address,
+            )
+            db.add(profile)
+
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create user/profile: {str(e)}"
+        )
+
+    db.refresh(new_user)
+    return new_user
+

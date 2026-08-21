@@ -37,7 +37,7 @@ def list_notifications(
     q = db.query(Notification)
 
     # Filter by user if not admin/operator, or if requested
-    if current_user.role not in ["admin", "operator", "fleet_manager"]:
+    if current_user.role not in ["admin", "fleet_operator"]:
         q = q.filter(Notification.user_id == current_user.id)
 
     if unread_only:
@@ -68,7 +68,7 @@ def get_unread_count(
 ):
     """Fast counter endpoint for navigation bar badge."""
     q = db.query(Notification).filter(Notification.is_read == False)
-    if current_user.role not in ["admin", "operator", "fleet_manager"]:
+    if current_user.role not in ["admin", "fleet_operator"]:
         q = q.filter(Notification.user_id == current_user.id)
 
     return {"unread_count": q.count()}
@@ -108,7 +108,7 @@ def mark_all_notifications_read(
     current_user: User = Depends(get_current_user),
 ):
     q = db.query(Notification).filter(Notification.is_read == False)
-    if current_user.role not in ["admin", "operator", "fleet_manager"]:
+    if current_user.role not in ["admin", "fleet_operator"]:
         q = q.filter(Notification.user_id == current_user.id)
 
     updated_count = q.update({Notification.is_read: True}, synchronize_session=False)

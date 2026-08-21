@@ -42,6 +42,12 @@ class User(Base):
     driver_profile: Mapped["Driver"] = relationship(
         "Driver", back_populates="user", uselist=False
     )
+    fleet_operator_profile: Mapped["FleetOperatorProfile"] = relationship(
+        "FleetOperatorProfile", back_populates="user", uselist=False
+    )
+    enterprise_customer_profile: Mapped["EnterpriseCustomerProfile"] = relationship(
+        "EnterpriseCustomerProfile", back_populates="user", uselist=False
+    )
     notifications: Mapped[list["Notification"]] = relationship(
         "Notification", back_populates="user"
     )

@@ -3,6 +3,8 @@
 from app.models.user import User
 from app.models.vehicle import Vehicle
 from app.models.driver import Driver
+from app.models.fleet_operator import FleetOperatorProfile
+from app.models.enterprise_customer import EnterpriseCustomerProfile
 from app.models.shipment import Shipment, ShipmentConsolidationGroup, ShipmentGroupMember
 from app.models.route import Route, RouteStop
 from app.models.incident import Incident, RecoveryPlan
@@ -19,11 +21,14 @@ from app.models.audit_log import AuditLog
 from app.models.prediction import ModelPrediction
 from app.models.return_cargo import ReturnCargoMatch
 from app.models.assistant_session import AssistantSession, AssistantMessage
+from app.models.breakdown import VehicleBreakdown
 
 __all__ = [
     "User",
     "Vehicle",
     "Driver",
+    "FleetOperatorProfile",
+    "EnterpriseCustomerProfile",
     "Shipment",
     "ShipmentConsolidationGroup",
     "ShipmentGroupMember",
@@ -43,4 +48,5 @@ __all__ = [
     "ReturnCargoMatch",
     "AssistantSession",
     "AssistantMessage",
+    "VehicleBreakdown",
 ]

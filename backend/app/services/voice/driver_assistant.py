@@ -155,15 +155,22 @@ class DriverAssistant:
         orig = origin or "Delhi"
         dest = destination or "Hyderabad"
 
-        if orig in INDIAN_CITIES and dest in INDIAN_CITIES:
-            dist_km = city_distance_km(orig, dest)
-            time_mins = travel_time_minutes(dist_km, road_type="mixed", loading_time_min=0, unloading_time_min=0)
-            time_hours = time_mins / 60.0
-            toll_inr = dist_km * NH_FRACTION * 3.0
-        else:
-            dist_km = 1580.0
-            time_hours = 26.5
-            toll_inr = 2850.0
+        from app.services.assistant.location_provider import get_location_provider
+        provider = get_location_provider()
+        corridor = provider.get_corridor_data(orig, dest)
+
+        dist_km = corridor.get("total_distance_km", 1200.0)
+        time_hours = corridor.get("driving_hours", 20.0)
+        tolls_list = corridor.get("toll_plazas", [])
+        toll_inr = sum(t.get("cost_inr", 0) for t in tolls_list) if tolls_list else (dist_km * NH_FRACTION * 3.0)
+
+        # Extract midway stop from corridor major stops
+        major_stops = corridor.get("major_stops", [])
+        midpoint_name = "Highway Midway"
+        if len(major_stops) > 2:
+            midpoint_name = major_stops[len(major_stops) // 2].get("city", "Highway Midway")
+        elif major_stops:
+            midpoint_name = major_stops[-1].get("city", "Highway Midway")
 
         estimated_days = max(1, int(round(time_hours / 12.0)))
         cost_res = calculate_route_cost(
@@ -206,6 +213,7 @@ class DriverAssistant:
                 "title": f"{orig.upper()} ➔ {dest.upper()}",
                 "origin": orig,
                 "destination": dest,
+                "corridor_name": corridor.get("corridor_name"),
                 "distance_km": round(dist_km, 1),
                 "driving_hours": round(time_hours, 1),
                 "estimated_days": estimated_days,
@@ -214,9 +222,13 @@ class DriverAssistant:
                 "fuel_cost_inr": fuel_cost_inr,
                 "toll_cost_inr": int(toll_inr),
                 "total_cost_inr": total_cost_inr,
+                "toll_plazas": tolls_list,
+                "coordinates": corridor.get("coordinates", []),
+                "parking": corridor.get("parking", []),
+                "restrooms": corridor.get("restrooms", []),
                 "recommended_stops": [
                     {"name": f"Origin Hub ({orig})", "type": "Start"},
-                    {"name": "Nagpur Highway Gateway", "type": "Midpoint Rest & Food"},
+                    {"name": f"{midpoint_name} Highway Gateway", "type": "Midpoint Rest & Food"},
                     {"name": f"Destination Hub ({dest})", "type": "Delivery"},
                 ],
             },

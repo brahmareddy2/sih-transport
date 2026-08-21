@@ -30,6 +30,10 @@ CITIES_MAP = {
     "Ahmedabad": ["ahmedabad", "అహ్మదాబాద్", "अहमदाबाद", "ਅਹਿਮਦਾਬਾਦ"],
     "Jaipur": ["jaipur", "జైపూర్", "जयपुर", "ਜੈਪੁਰ"],
     "Nagpur": ["nagpur", "నాగ్‌పూర్", "నాగపూర్", "नागपुर", "ਨਾਗਪੁਰ"],
+    "Srikakulam": ["srikakulam", "srikakulum", "శ్రీకాకుళం", "श्रीकाकुलम"],
+    "Vijayawada": ["vijayawada", "విజయవాడ", "विजयवाड़ा", "viyawada"],
+    "Visakhapatnam": ["visakhapatnam", "vizag", "విశాఖపट్నం", "विशाखापत्तनम"],
+    "Guntur": ["guntur", "గుంటూరు", "गुंटूर"],
 }
 
 
@@ -180,7 +184,7 @@ class UniversalIntentRouter:
 
         # 4. Safe Communication / Calling
         elif intent == "CALL_CONTACT":
-            cat = "puncture_shop" if "puncture" in raw_text.lower() else "fleet_manager"
+            cat = "puncture_shop" if "puncture" in raw_text.lower() else "fleet_operator"
             contact_data = self.comm_service.initiate_contact(target_category=cat, caller_role=user_role)
             return {
                 "text": contact_data["message"],
@@ -264,9 +268,11 @@ class UniversalIntentRouter:
     def _check_rbac(self, intent: str, role: str) -> bool:
         """Enforce strict RBAC permissions across all intents."""
         r = role.lower()
-        if r in ["admin", "operator"]:
+        if r in ["operator", "fleet_manager"]:
+            r = "fleet_operator"
+        if r in ["admin", "fleet_operator"]:
             return True
-        if r in ["fleet_manager", "owner"]:
+        if r in ["fleet_operator", "owner"]:
             return intent in [
                 "PROFIT_ANALYTICS", "VEHICLE_LOCATION", "VEHICLE_RANKINGS", "FUEL_STATUS",
                 "FUEL_ESTIMATE", "TOLL_ESTIMATE", "ETA", "RETURN_CARGO", "CALL_CONTACT",
@@ -293,6 +299,40 @@ class UniversalIntentRouter:
                     if canonical not in found:
                         found.append(canonical)
                     break
+        
+        # Fallback regex city extraction if <= 1 city is found
+        if len(found) < 2:
+            # Check for English pattern: "[CityA] to [CityB]"
+            match = re.search(r'(?:from\s+)?([a-zA-Z]{3,15})\s+to\s+([a-zA-Z]{3,15})', text, re.IGNORECASE)
+            if match:
+                city1 = match.group(1).strip().capitalize()
+                city2 = match.group(2).strip().capitalize()
+                
+                # Normalize spelling using aliases map
+                for canonical, aliases in CITIES_MAP.items():
+                    if city1.lower() in [a.lower() for a in aliases]:
+                        city1 = canonical
+                    if city2.lower() in [a.lower() for a in aliases]:
+                        city2 = canonical
+                        
+                stop_words = ["Plan", "Trip", "Travel", "Go", "Me", "Route", "How", "Show", "Lorry", "Truck", "My", "The", "Yes", "Confirm", "Search"]
+                if city1 not in stop_words and city2 not in stop_words:
+                    if city1 not in found:
+                        found.append(city1)
+                    if city2 not in found:
+                        found.append(city2)
+            
+            # Check for Telugu pattern: "[CityA] నుండి [CityB]"
+            te_match = re.search(r'([\u0C00-\u0C7F]+)\s*(?:నుండి|టు|నుంచి)\s*([\u0C00-\u0C7F]+)', text)
+            if te_match:
+                city1 = te_match.group(1).strip()
+                city2 = te_match.group(2).strip()
+                te_stop_words = ["నేను", "వెళ్ళాలి", "నాకు", "ఒక", "రూట్"]
+                if city1 not in te_stop_words and city2 not in te_stop_words:
+                    if city1 not in found:
+                        found.append(city1)
+                    if city2 not in found:
+                        found.append(city2)
         return found
 
     def _extract_fuel_qty(self, text: str) -> Optional[float]:

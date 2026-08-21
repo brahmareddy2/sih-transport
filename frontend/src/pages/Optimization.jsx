@@ -341,7 +341,7 @@ export default function Optimization() {
   return (
     <div style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '100vh', background: 'var(--color-bg-primary)' }}>
       {/* Header Banner */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(90deg, #1e293b 0%, #0f172a 100%)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(90deg, var(--color-bg-secondary) 0%, var(--color-bg-primary) 100%)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: '800', background: 'linear-gradient(to right, #60a5fa, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             {t('opt_engine_title', '🛰️ OR-Tools Multi-Vehicle Optimization Engine')}
@@ -447,7 +447,7 @@ export default function Optimization() {
       {activeTab === 'scenarios' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Live Fleet Tracking Telematics Summary */}
-          <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px', background: 'var(--color-surface,#1e1e2e)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px', background: 'var(--color-bg-card)', padding: '24px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>{t('fleet_status_title', '🚛 Real-Time Fleet Status')}</h3>
               <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '6px', marginBottom: '16px' }}>
@@ -458,38 +458,38 @@ export default function Optimization() {
               </Link>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-              <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('active_vehicles', 'Active Vehicles')}</div>
+              <div style={{ background: 'var(--color-bg-primary)', padding: '16px', borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>{t('active_vehicles', 'Active Vehicles')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#10b981', marginTop: '4px' }}>
                   {vehicles.filter(v => ['IN_TRANSIT', 'ACTIVE'].includes(v.vehicle_status)).length}
                 </div>
               </div>
-              <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('idle_vehicles', 'Idle Vehicles')}</div>
+              <div style={{ background: 'var(--color-bg-primary)', padding: '16px', borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>{t('idle_vehicles', 'Idle Vehicles')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#fbbf24', marginTop: '4px' }}>
                   {vehicles.filter(v => ['IDLE', 'STOPPED'].includes(v.vehicle_status)).length}
                 </div>
               </div>
-              <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('low_fuel_vehicles', 'Low Fuel Vehicles')}</div>
+              <div style={{ background: 'var(--color-bg-primary)', padding: '16px', borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>{t('low_fuel_vehicles', 'Low Fuel Vehicles')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#ef4444', marginTop: '4px' }}>
                   {vehicles.filter(v => v.vehicle_status === 'LOW_FUEL').length}
                 </div>
               </div>
-              <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('active_incidents', 'Active Incidents')}</div>
+              <div style={{ background: 'var(--color-bg-primary)', padding: '16px', borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>{t('active_incidents', 'Active Incidents')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#dc2626', marginTop: '4px' }}>
                   {seedStatus?.incidents_count ?? 0}
                 </div>
               </div>
-              <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('delayed_vehicles', 'Delayed Vehicles')}</div>
+              <div style={{ background: 'var(--color-bg-primary)', padding: '16px', borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>{t('delayed_vehicles', 'Delayed Vehicles')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#f59e0b', marginTop: '4px' }}>
                   {vehicles.filter(v => v.risk_level === 'HIGH').length}
                 </div>
               </div>
-              <div style={{ background: '#13131f', padding: '16px', borderRadius: 8, border: '1px solid #2d2d3d', textAlign: 'center' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase' }}>{t('total_registered_fleet', 'Total Registered Fleet')}</div>
+              <div style={{ background: 'var(--color-bg-primary)', padding: '16px', borderRadius: 8, border: '1px solid var(--color-border)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>{t('total_registered_fleet', 'Total Registered Fleet')}</div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#6366f1', marginTop: '4px' }}>
                   {vehicles.length}
                 </div>
@@ -749,7 +749,7 @@ export default function Optimization() {
             <div
               className="card"
               style={{
-                background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                background: 'linear-gradient(135deg, var(--color-bg-secondary) 0%, var(--color-bg-primary) 100%)',
                 borderColor: 'var(--color-brand)',
                 boxShadow: '0 8px 32px rgba(59, 130, 246, 0.1)',
               }}

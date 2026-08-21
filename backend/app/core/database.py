@@ -39,9 +39,17 @@ try:
     # Auto-create all tables in PostgreSQL
     import app.models  # noqa: F401
     Base.metadata.create_all(engine)
+    from app.core.db_migrations import run_migrations
+    run_migrations(engine)
+    logger.info("Successfully connected to PostgreSQL database at %s", db_url)
 except Exception as e:
-    # Graceful fallback for local development outside Docker
-    logger.warning("PostgreSQL host unreachable (%s). Using SQLite local fallback: %s", db_url, e)
+    # LOUD warning/error for local development fallback
+    logger.error("=" * 80)
+    logger.error("  CRITICAL DATABASE NOTICE: PostgreSQL connection failed!")
+    logger.error("  Connection DSN: %s", db_url)
+    logger.error("  Error Details: %s", e)
+    logger.error("  FALLING BACK TO LOCAL SQLITE DATABASE (dev_logistics.db) FOR DEVELOPMENT.")
+    logger.error("=" * 80)
     db_url = "sqlite:///./dev_logistics.db"
     engine = create_engine(
         db_url,
@@ -53,10 +61,12 @@ except Exception as e:
     from sqlalchemy.dialects.postgresql import JSONB
     from sqlalchemy import JSON
     for table in Base.metadata.tables.values():
-        for col in table.columns:
-            if isinstance(col.type, JSONB):
-                col.type = JSON()
+         for col in table.columns:
+             if isinstance(col.type, JSONB):
+                 col.type = JSON()
     Base.metadata.create_all(engine)
+    from app.core.db_migrations import run_migrations
+    run_migrations(engine)
 
 # ── Session Factory ───────────────────────────────────────
 SessionLocal = sessionmaker(

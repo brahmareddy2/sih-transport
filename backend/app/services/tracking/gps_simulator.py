@@ -198,88 +198,118 @@ def resume_simulation(vehicle_id: uuid.UUID) -> dict:
         SIMULATIONS[v_str]["vehicle_status"] = "IN_TRANSIT"
     return get_vehicle_state(vehicle_id)
 
+def _build_vehicle_state(db: Session, vehicle: Vehicle, sim_state: dict = None) -> dict:
+    from app.services.tracking.geocoder import reverse_geocode
+    from app.models.shipment import Shipment
+    
+    # 1. Base values
+    if sim_state:
+        lat = sim_state["latitude"]
+        lon = sim_state["longitude"]
+        speed = sim_state["speed"]
+        heading = sim_state["heading"]
+        fuel_level = sim_state["fuel_level"]
+        fuel_pct = sim_state.get("fuel_pct")
+        if fuel_pct is None:
+            cap = sim_state.get("fuel_capacity") or 200.0
+            fuel_pct = round((fuel_level / cap) * 100.0, 1) if cap > 0 else 0.0
+        engine_status = sim_state["engine_status"]
+        vehicle_status = sim_state["vehicle_status"]
+        trip_id = sim_state.get("current_trip_id") or sim_state.get("trip_id")
+        remaining_km = sim_state["remaining_km"]
+        eta_minutes = sim_state["eta_minutes"]
+        eta = sim_state["eta"]
+        risk_level = sim_state["risk_level"]
+    else:
+        lat = vehicle.current_lat or 19.0760
+        lon = vehicle.current_lon or 72.8777
+        speed = 0.0
+        heading = 0
+        fuel_level = float(vehicle.current_fuel_level_l or 0.0)
+        fuel_pct = round((fuel_level / float(vehicle.fuel_tank_capacity_l or 200.0)) * 100.0, 1) if vehicle.fuel_tank_capacity_l else 0.0
+        engine_status = "off"
+        vehicle_status = "OFFLINE" if vehicle.status == "breakdown" else vehicle.status.upper()
+        # Find active route
+        from app.models.route import Route
+        active_route = db.query(Route).filter(Route.vehicle_id == vehicle.id, Route.status == "in_progress").first()
+        trip_id = str(active_route.id) if active_route else None
+        remaining_km = 0.0
+        eta_minutes = 0
+        eta = None
+        risk_level = "LOW"
+        
+    # 2. Driver details
+    driver_name = "No Driver Assigned"
+    if vehicle.driver:
+        driver_name = vehicle.driver.full_name
+        
+    # 3. Geocode coordinates
+    location_address = reverse_geocode(lat, lon)
+    
+    # 4. Current order details
+    current_order = None
+    if trip_id:
+        t_uuid = uuid.UUID(trip_id) if isinstance(trip_id, str) else trip_id
+        shipment = db.query(Shipment).filter(
+            Shipment.assigned_route_id == t_uuid,
+            Shipment.status.in_(["assigned", "in_transit", "delayed"])
+        ).first()
+        if shipment:
+            current_order = {
+                "shipment_number": shipment.shipment_number,
+                "goods_type": shipment.goods_type or "General Cargo",
+                "weight_kg": float(shipment.weight_kg),
+                "destination_city": shipment.destination_city,
+                "destination_address": shipment.destination_address,
+            }
+            
+    return {
+        "vehicle_id": vehicle.id,
+        "registration_number": vehicle.registration_number,
+        "latitude": lat,
+        "longitude": lon,
+        "speed": speed,
+        "heading": heading,
+        "fuel_level": fuel_level,
+        "fuel_pct": fuel_pct,
+        "engine_status": engine_status,
+        "vehicle_status": vehicle_status,
+        "timestamp": datetime.now(timezone.utc),
+        "current_trip_id": uuid.UUID(trip_id) if isinstance(trip_id, str) else trip_id,
+        "driver_name": driver_name,
+        "remaining_km": remaining_km,
+        "eta_minutes": eta_minutes,
+        "eta": eta,
+        "risk_level": risk_level,
+        "current_location_address": location_address,
+        "current_order": current_order,
+    }
+
+
 def get_vehicle_state(vehicle_id: uuid.UUID) -> dict:
     v_str = str(vehicle_id)
-    if v_str in SIMULATIONS:
-        s = SIMULATIONS[v_str]
-        return {
-            "vehicle_id": uuid.UUID(s["vehicle_id"]),
-            "registration_number": s["registration_number"],
-            "latitude": s["latitude"],
-            "longitude": s["longitude"],
-            "speed": s["speed"],
-            "heading": s["heading"],
-            "fuel_level": s["fuel_level"],
-            "fuel_pct": s["fuel_pct"] if "fuel_pct" in s else round((s["fuel_level"] / s["fuel_capacity"])*100.0, 1),
-            "engine_status": s["engine_status"],
-            "vehicle_status": s["vehicle_status"],
-            "timestamp": datetime.now(timezone.utc),
-            "current_trip_id": uuid.UUID(s["current_trip_id"]) if s["current_trip_id"] else None,
-            "driver_name": s["driver_name"],
-            "remaining_km": s["remaining_km"],
-            "eta_minutes": s["eta_minutes"],
-            "eta": s["eta"],
-            "risk_level": s["risk_level"]
-        }
-    
-    # Fallback to reading vehicle from DB
     db = SessionLocal()
     try:
         vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
-        if vehicle:
-            return {
-                "vehicle_id": vehicle.id,
-                "registration_number": vehicle.registration_number,
-                "latitude": vehicle.current_lat or 19.0760,
-                "longitude": vehicle.current_lon or 72.8777,
-                "speed": 0.0,
-                "heading": 0,
-                "fuel_level": float(vehicle.current_fuel_level_l or 0.0),
-                "fuel_pct": round((float(vehicle.current_fuel_level_l or 0.0)/float(vehicle.fuel_tank_capacity_l or 200.0))*100, 1) if vehicle.fuel_tank_capacity_l else 0.0,
-                "engine_status": "off",
-                "vehicle_status": "OFFLINE" if vehicle.status == "breakdown" else vehicle.status.upper(),
-                "timestamp": datetime.now(timezone.utc),
-                "current_trip_id": None,
-                "driver_name": vehicle.driver.full_name if vehicle.driver else "No Driver Assigned",
-                "remaining_km": 0.0,
-                "eta_minutes": 0,
-                "eta": None,
-                "risk_level": "LOW"
-            }
+        if not vehicle:
+            raise ValueError(f"Vehicle {vehicle_id} not found.")
+        if v_str in SIMULATIONS:
+            return _build_vehicle_state(db, vehicle, SIMULATIONS[v_str])
+        return _build_vehicle_state(db, vehicle)
     finally:
         db.close()
-    raise ValueError(f"Vehicle {vehicle_id} not found.")
+
 
 def get_all_vehicle_states() -> List[dict]:
-    # Merges memory simulation list with remaining DB vehicles
     states = []
     db = SessionLocal()
     try:
         vehicles = db.query(Vehicle).all()
         for v in vehicles:
             if str(v.id) in SIMULATIONS:
-                states.append(get_vehicle_state(v.id))
+                states.append(_build_vehicle_state(db, v, SIMULATIONS[str(v.id)]))
             else:
-                # Idle/offline DB states
-                states.append({
-                    "vehicle_id": v.id,
-                    "registration_number": v.registration_number,
-                    "latitude": v.current_lat or 19.0760,
-                    "longitude": v.current_lon or 72.8777,
-                    "speed": 0.0,
-                    "heading": 0,
-                    "fuel_level": float(v.current_fuel_level_l or 0.0),
-                    "fuel_pct": round((float(v.current_fuel_level_l or 0.0)/float(v.fuel_tank_capacity_l or 200.0))*100, 1) if v.fuel_tank_capacity_l else 0.0,
-                    "engine_status": "off",
-                    "vehicle_status": "OFFLINE" if v.status == "breakdown" else v.status.upper(),
-                    "timestamp": datetime.now(timezone.utc),
-                    "current_trip_id": None,
-                    "driver_name": v.driver.full_name if v.driver else "No Driver Assigned",
-                    "remaining_km": 0.0,
-                    "eta_minutes": 0,
-                    "eta": None,
-                    "risk_level": "LOW"
-                })
+                states.append(_build_vehicle_state(db, v))
     finally:
         db.close()
     return states
@@ -313,7 +343,7 @@ def _trigger_low_fuel_alert(db: Session, vehicle_id: str, registration_number: s
         if recent and (datetime.now(timezone.utc) - recent.created_at.replace(tzinfo=timezone.utc)).total_seconds() < 600:
             return  # Suppress repeat alerts
             
-        recipient = db.query(User).filter(User.role.in_(["operator", "admin"])).first()
+        recipient = db.query(User).filter(User.role.in_(["fleet_operator", "admin"])).first()
         if recipient:
             alert = Notification(
                 user_id=recipient.id,
@@ -358,46 +388,106 @@ def _write_history_and_update_vehicle_in_db(db: Session, vehicle_id: str, state:
         db.rollback()
         logger.error("Failed periodic DB telemetry update: %s", e)
 
+
+def _check_customer_arrival_alert(db: Session, state: dict):
+    try:
+        from app.models.shipment import Shipment
+        from app.models.notification import Notification
+        
+        trip_id = state["current_trip_id"] or state.get("trip_id")
+        eta_minutes = state["eta_minutes"]
+        
+        # Check if the trip is close to arrival (~1 hour = 60 minutes, e.g. <= 65 mins)
+        if trip_id and eta_minutes > 0 and eta_minutes <= 65:
+            t_uuid = uuid.UUID(trip_id) if isinstance(trip_id, str) else trip_id
+            
+            # Query all active shipments on this route
+            shipments = db.query(Shipment).filter(
+                Shipment.assigned_route_id == t_uuid,
+                Shipment.status.in_(["assigned", "in_transit", "delayed"])
+            ).all()
+            
+            for shp in shipments:
+                if not shp.customer_id:
+                    continue
+                    
+                # Check for existing alert to avoid duplicate sends
+                recent_alert = db.query(Notification).filter(
+                    Notification.user_id == shp.customer_id,
+                    Notification.notification_type == "customer_eta_alert",
+                    Notification.message.like(f"%{shp.shipment_number}%")
+                ).first()
+                
+                if not recent_alert:
+                    alert = Notification(
+                        user_id=shp.customer_id,
+                        notification_type="customer_eta_alert",
+                        title=f"📦 Order Arriving Soon: {shp.shipment_number}",
+                        message=f"Your order {shp.shipment_number} is arriving in approximately 1 hour — please be ready to receive it.",
+                        is_read=False,
+                        created_at=datetime.now(timezone.utc)
+                    )
+                    db.add(alert)
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error("Failed checking/sending customer arrival notification: %s", e)
+
 # Simulation loop ticking
 async def broadcast_fleet_update():
     if not ACTIVE_CONNECTIONS:
         return
     import json
-    payload = {
-        "type": "fleet_update",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "vehicles": [
-            {
-                "vehicle_id": str(s["vehicle_id"]),
-                "registration_number": s["registration_number"],
-                "latitude": s["latitude"],
-                "longitude": s["longitude"],
-                "speed": s["speed"],
-                "heading": s["heading"],
-                "fuel_level": s["fuel_level"],
-                "fuel_pct": s["fuel_pct"] if "fuel_pct" in s else round((s["fuel_level"] / s["fuel_capacity"])*100.0, 1),
-                "engine_status": s["engine_status"],
-                "vehicle_status": s["vehicle_status"],
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "current_trip_id": s["current_trip_id"],
-                "driver_name": s["driver_name"],
-                "remaining_km": s["remaining_km"],
-                "eta_minutes": s["eta_minutes"],
-                "eta": s["eta"],
-                "risk_level": s["risk_level"]
-            }
-            for s in get_all_vehicle_states()
-        ]
-    }
-    dead = []
-    for ws in ACTIVE_CONNECTIONS:
-        try:
-            await ws.send_text(json.dumps(payload))
-        except Exception:
-            dead.append(ws)
-    for ws in dead:
-        if ws in ACTIVE_CONNECTIONS:
-            ACTIVE_CONNECTIONS.remove(ws)
+    db = SessionLocal()
+    try:
+        # Get all vehicle states once
+        all_states = get_all_vehicle_states()
+        
+        # Build states map
+        states_by_id = {str(s["vehicle_id"]): s for s in all_states}
+        
+        dead = []
+        for conn in ACTIVE_CONNECTIONS:
+            ws = conn["socket"]
+            role = conn["role"]
+            user_id = conn["user_id"]
+            
+            if role == "driver":
+                # Find driver's assigned vehicle ID
+                from app.models.driver import Driver
+                driver = db.query(Driver).filter(Driver.user_id == user_id).first()
+                v_id = str(driver.assigned_vehicle_id) if (driver and driver.assigned_vehicle_id) else None
+                
+                # Only include this driver's assigned vehicle!
+                driver_vehicles = []
+                if v_id and v_id in states_by_id:
+                    driver_vehicles.append(states_by_id[v_id])
+                
+                payload = {
+                    "type": "fleet_update",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "vehicles": driver_vehicles
+                }
+            else:
+                # Include all vehicles for admin/operator/fleet_manager
+                payload = {
+                    "type": "fleet_update",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "vehicles": all_states
+                }
+                
+            try:
+                await ws.send_text(json.dumps(payload))
+            except Exception:
+                dead.append(conn)
+                
+        for conn in dead:
+            if conn in ACTIVE_CONNECTIONS:
+                ACTIVE_CONNECTIONS.remove(conn)
+    except Exception as e:
+        logger.error("Error in broadcast_fleet_update: %s", e)
+    finally:
+        db.close()
 
 async def tick_simulations():
     if not SIMULATIONS:
@@ -492,6 +582,8 @@ async def tick_simulations():
             state["tick_count"] += 1
             if state["tick_count"] % 5 == 0:
                 _write_history_and_update_vehicle_in_db(db, vehicle_id, state)
+            if state["tick_count"] % 10 == 0:
+                _check_customer_arrival_alert(db, state)
 
             updated = True
 

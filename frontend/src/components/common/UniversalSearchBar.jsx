@@ -36,11 +36,11 @@ export default function UniversalSearchBar({ onSearch, onOpenVoice }) {
         style={{
           display: 'flex',
           alignItems: 'center',
-          background: '#16162a',
-          border: '1px solid #3b3b5c',
+          background: 'var(--color-bg-card)',
+          border: '1px solid var(--color-border)',
           borderRadius: 18,
           padding: '6px 10px 6px 18px',
-          boxShadow: '0 8px 25px rgba(0,0,0,0.4)',
+          boxShadow: 'var(--shadow-card)',
           transition: 'all 0.2s',
         }}
       >
@@ -55,7 +55,7 @@ export default function UniversalSearchBar({ onSearch, onOpenVoice }) {
             background: 'transparent',
             border: 'none',
             outline: 'none',
-            color: '#fff',
+            color: 'var(--color-text-primary)',
             fontSize: '0.95rem',
             fontWeight: 500,
           }}
@@ -90,12 +90,13 @@ export default function UniversalSearchBar({ onSearch, onOpenVoice }) {
         {/* Search Submit Button */}
         <button
           type="submit"
+          onClick={handleSubmit}
           style={{
-            background: '#2d2d48',
-            border: '1px solid #4a4a6e',
+            background: 'var(--color-bg-primary)',
+            border: '1px solid var(--color-border)',
             borderRadius: 12,
             padding: '10px 16px',
-            color: '#fff',
+            color: 'var(--color-text-primary)',
             fontWeight: 700,
             fontSize: '0.85rem',
             cursor: 'pointer',
@@ -108,7 +109,7 @@ export default function UniversalSearchBar({ onSearch, onOpenVoice }) {
 
       {/* Suggestion Chips */}
       <div style={{ display: 'flex', gap: '8px', marginTop: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
-        <span style={{ fontSize: '0.72rem', color: '#6b7280', alignSelf: 'center', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', alignSelf: 'center', whiteSpace: 'nowrap' }}>
           💡 Try asking:
         </span>
         {SUGGESTIONS.map((s, idx) => (
@@ -117,11 +118,11 @@ export default function UniversalSearchBar({ onSearch, onOpenVoice }) {
             type="button"
             onClick={() => handleChipClick(s.query)}
             style={{
-              background: '#1c1c34',
-              border: '1px solid #2d2d48',
+              background: 'var(--color-bg-secondary)',
+              border: '1px solid var(--color-border)',
               borderRadius: 20,
               padding: '4px 12px',
-              color: '#cbd5e1',
+              color: 'var(--color-text-secondary)',
               fontSize: '0.75rem',
               fontWeight: 600,
               cursor: 'pointer',
@@ -131,12 +132,12 @@ export default function UniversalSearchBar({ onSearch, onOpenVoice }) {
             onMouseEnter={(e) => {
               e.currentTarget.style.background = '#6366f122'
               e.currentTarget.style.borderColor = '#6366f1'
-              e.currentTarget.style.color = '#fff'
+              e.currentTarget.style.color = 'var(--color-text-primary)'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#1c1c34'
-              e.currentTarget.style.borderColor = '#2d2d48'
-              e.currentTarget.style.color = '#cbd5e1'
+              e.currentTarget.style.background = 'var(--color-bg-secondary)'
+              e.currentTarget.style.borderColor = 'var(--color-border)'
+              e.currentTarget.style.color = 'var(--color-text-secondary)'
             }}
           >
             {s.label}

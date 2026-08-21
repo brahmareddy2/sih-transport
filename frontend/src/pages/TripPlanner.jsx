@@ -196,21 +196,21 @@ export default function TripPlanner() {
         {/* LEFT COLUMN: KPI Metrics, Fuel, Tolls, Food, Total Cost */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* 1. Distance & Driving Duration Card */}
-          <div style={{ background: '#16162a', padding: '20px', borderRadius: 18, border: '1px solid #2d2d44', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-            <div style={{ background: '#111122', padding: '14px', borderRadius: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700 }}>Total Distance</div>
+          <div style={{ background: 'var(--color-bg-card)', padding: '20px', borderRadius: 18, border: '1px solid var(--color-border)', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            <div style={{ background: 'var(--color-bg-primary)', padding: '14px', borderRadius: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Total Distance</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#60a5fa', marginTop: '4px' }}>
                 {tripData?.distance_km ?? 1580} km
               </div>
             </div>
-            <div style={{ background: '#111122', padding: '14px', borderRadius: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700 }}>Driving Time</div>
+            <div style={{ background: 'var(--color-bg-primary)', padding: '14px', borderRadius: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Driving Time</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#34d399', marginTop: '4px' }}>
                 ~{tripData?.duration_hours ?? 26.5} hrs
               </div>
             </div>
-            <div style={{ background: '#111122', padding: '14px', borderRadius: 12, textAlign: 'center' }}>
-              <div style={{ fontSize: '0.75rem', color: '#9ca3af', textTransform: 'uppercase', fontWeight: 700 }}>Trip Duration</div>
+            <div style={{ background: 'var(--color-bg-primary)', padding: '14px', borderRadius: 12, textAlign: 'center' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Trip Duration</div>
               <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#a78bfa', marginTop: '4px' }}>
                 ~{tripData?.duration_days ?? 2.0} days
               </div>
@@ -218,8 +218,8 @@ export default function TripPlanner() {
           </div>
 
           {/* 2. Route Options (Best, Fastest, Lowest Cost) */}
-          <div style={{ background: '#16162a', padding: '20px', borderRadius: 18, border: '1px solid #2d2d44' }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: '1.05rem', fontWeight: 800 }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: '20px', borderRadius: 18, border: '1px solid var(--color-border)' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>
               🛣️ Route Options Comparison
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -236,8 +236,8 @@ export default function TripPlanner() {
                     style={{
                       padding: '14px 16px',
                       borderRadius: 12,
-                      background: isSelected ? '#6366f122' : '#111122',
-                      border: isSelected ? '2px solid #6366f1' : '1px solid #2e2e46',
+                      background: isSelected ? '#6366f122' : 'var(--color-bg-primary)',
+                      border: isSelected ? '2px solid #6366f1' : '1px solid var(--color-border)',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
@@ -246,10 +246,10 @@ export default function TripPlanner() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 800, color: isSelected ? '#a5b4fc' : '#fff', fontSize: '0.95rem' }}>
+                      <div style={{ fontWeight: 800, color: isSelected ? 'var(--color-purple)' : 'var(--color-text-primary)', fontSize: '0.95rem' }}>
                         {rt.name}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: '#9ca3af', marginTop: '2px' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
                         {rt.distance_km} km • ~{rt.duration_hours} hrs
                       </div>
                     </div>
@@ -257,7 +257,7 @@ export default function TripPlanner() {
                       <div style={{ fontWeight: 800, color: '#10b981', fontSize: '1rem' }}>
                         ₹{rt.total_cost_inr?.toLocaleString?.()}
                       </div>
-                      <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: 4, background: isSelected ? '#6366f1' : '#27273a', color: '#fff' }}>
+                      <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: 4, background: isSelected ? 'var(--color-brand)' : 'var(--color-bg-hover)', color: '#fff' }}>
                         {isSelected ? '✓ Selected' : 'Select'}
                       </span>
                     </div>
@@ -268,17 +268,17 @@ export default function TripPlanner() {
           </div>
 
           {/* 3. Fuel Calculation Card */}
-          <div style={{ background: '#16162a', padding: '20px', borderRadius: 18, border: '1px solid #2d2d44' }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: '20px', borderRadius: 18, border: '1px solid var(--color-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#fbbf24' }}>
                 ⛽ Fuel Consumption & Cost Calculator
               </h3>
-              <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>@ ₹95.0/L Diesel</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>@ ₹95.0/L Diesel</span>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#e2e8f0', marginBottom: '6px' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-text-primary)', marginBottom: '6px' }}>
                   <span>Current Available Fuel:</span>
                   <strong style={{ color: '#fbbf24' }}>{currentFuel} Litres</strong>
                 </label>
@@ -297,20 +297,20 @@ export default function TripPlanner() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginTop: '6px' }}>
-                <div style={{ background: '#111122', padding: '10px', borderRadius: 10, textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Total Required</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>
+                <div style={{ background: 'var(--color-bg-primary)', padding: '10px', borderRadius: 10, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>Total Required</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>
                     {tripData?.fuel_required_l ?? 395} L
                   </div>
                 </div>
-                <div style={{ background: '#111122', padding: '10px', borderRadius: 10, textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>To Purchase</div>
+                <div style={{ background: 'var(--color-bg-primary)', padding: '10px', borderRadius: 10, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>To Purchase</div>
                   <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fbbf24' }}>
                     {Math.max(0, (tripData?.fuel_required_l ?? 395) - currentFuel)} L
                   </div>
                 </div>
-                <div style={{ background: '#111122', padding: '10px', borderRadius: 10, textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Fuel Cost</div>
+                <div style={{ background: 'var(--color-bg-primary)', padding: '10px', borderRadius: 10, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)' }}>Fuel Cost</div>
                   <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10b981' }}>
                     ₹{(tripData?.fuel_cost_inr ?? 37525).toLocaleString()}
                   </div>
@@ -320,9 +320,9 @@ export default function TripPlanner() {
           </div>
 
           {/* 4. Toll Cost Breakdown Card */}
-          <div style={{ background: '#16162a', padding: '20px', borderRadius: 18, border: '1px solid #2d2d44' }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: '20px', borderRadius: 18, border: '1px solid var(--color-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>
                 🛣️ Toll Cost Breakdown
               </h3>
               <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#60a5fa' }}>
@@ -349,14 +349,14 @@ export default function TripPlanner() {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '8px 12px',
-                    background: '#111122',
+                    background: 'var(--color-bg-primary)',
                     borderRadius: 8,
                     fontSize: '0.85rem',
                   }}
                 >
                   <div>
-                    <span style={{ fontWeight: 700, color: '#e2e8f0' }}>{t.name}</span>
-                    <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginLeft: '6px' }}>({t.location})</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text-primary)' }}>{t.name}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginLeft: '6px' }}>({t.location})</span>
                   </div>
                   <strong style={{ color: '#60a5fa' }}>₹{t.cost_inr}</strong>
                 </div>
@@ -365,7 +365,7 @@ export default function TripPlanner() {
           </div>
 
           {/* 5. Food & Driver Meals Calculator */}
-          <div style={{ background: '#16162a', padding: '20px', borderRadius: 18, border: '1px solid #2d2d44' }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: '20px', borderRadius: 18, border: '1px solid var(--color-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#f472b6' }}>
                 🍛 Food & Daily Allowance
@@ -376,12 +376,12 @@ export default function TripPlanner() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#9ca3af' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
                 <span>Daily Breakdown: Breakfast ₹100 • Lunch ₹150 • Dinner ₹150</span>
                 <span>= ₹400 / day</span>
               </div>
               <div>
-                <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#e2e8f0', marginBottom: '4px' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--color-text-primary)', marginBottom: '4px' }}>
                   <span>Daily Meal Allowance Budget:</span>
                   <strong style={{ color: '#f472b6' }}>₹{foodBudget} / day</strong>
                 </label>
@@ -402,8 +402,8 @@ export default function TripPlanner() {
           </div>
 
           {/* 6. Total Cost Summary & Financial ROI */}
-          <div style={{ background: 'linear-gradient(135deg, #1e1e38, #18182c)', padding: '24px', borderRadius: 20, border: '1px solid #10b98155', boxShadow: '0 0 30px rgba(16, 185, 129, 0.15)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #2d2d48', paddingBottom: '12px', marginBottom: '14px' }}>
+          <div style={{ background: 'linear-gradient(135deg, var(--color-bg-secondary) 0%, var(--color-bg-primary) 100%)', padding: '24px', borderRadius: 20, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '12px', marginBottom: '14px' }}>
               <div>
                 <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 800, textTransform: 'uppercase' }}>
                   Total Estimated Trip Cost
@@ -413,24 +413,24 @@ export default function TripPlanner() {
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Expected Arrival (ETA):</div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Expected Arrival (ETA):</div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text-primary)', marginTop: '2px' }}>
                   {tripData?.eta_timestamp || 'Tomorrow at 18:30 PM'}
                 </div>
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-              <div style={{ background: '#111122', padding: '10px 14px', borderRadius: 10 }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Cost Per Km:</div>
-                <strong style={{ color: '#fff', fontSize: '1rem' }}>₹{tripData?.cost_per_km_inr ?? 27.53} / km</strong>
+              <div style={{ background: 'var(--color-bg-primary)', padding: '10px 14px', borderRadius: 10 }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Cost Per Km:</div>
+                <strong style={{ color: 'var(--color-text-primary)', fontSize: '1rem' }}>₹{tripData?.cost_per_km_inr ?? 27.53} / km</strong>
               </div>
-              <div style={{ background: '#111122', padding: '10px 14px', borderRadius: 10 }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Cost Per Day:</div>
-                <strong style={{ color: '#fff', fontSize: '1rem' }}>₹{tripData?.cost_per_day_inr ?? 21750} / day</strong>
+              <div style={{ background: 'var(--color-bg-primary)', padding: '10px 14px', borderRadius: 10 }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Cost Per Day:</div>
+                <strong style={{ color: 'var(--color-text-primary)', fontSize: '1rem' }}>₹{tripData?.cost_per_day_inr ?? 21750} / day</strong>
               </div>
-              <div style={{ background: '#111122', padding: '10px 14px', borderRadius: 10 }}>
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Estimated Revenue:</div>
+              <div style={{ background: 'var(--color-bg-primary)', padding: '10px 14px', borderRadius: 10 }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Estimated Revenue:</div>
                 <strong style={{ color: '#60a5fa', fontSize: '1rem' }}>₹{(tripData?.est_freight_revenue_inr ?? 65000).toLocaleString()}</strong>
               </div>
               <div style={{ background: '#10b98118', padding: '10px 14px', borderRadius: 10, border: '1px solid #10b98144' }}>
@@ -443,13 +443,13 @@ export default function TripPlanner() {
 
         {/* RIGHT COLUMN: Interactive Leaflet Route Map + POI Tabs */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ background: '#16162a', padding: '16px', borderRadius: 18, border: '1px solid #2d2d44', height: '620px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: '16px', borderRadius: 18, border: '1px solid var(--color-border)', height: '620px', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '1.2rem' }}>📍</span>
-                <span style={{ fontWeight: 800, fontSize: '1rem', color: '#fff' }}>Interactive Freight Route Map (Leaflet + OpenStreetMap)</span>
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text-primary)' }}>Interactive Freight Route Map (Leaflet + OpenStreetMap)</span>
               </div>
-              <div style={{ display: 'flex', gap: '6px', fontSize: '0.75rem', color: '#9ca3af' }}>
+              <div style={{ display: 'flex', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
                 <span>🚩 Origin</span> • <span>🏁 Dest</span> • <span>⛽ Fuel</span> • <span>🍛 Dhaba</span> • <span>⚙️ Mechanic</span>
               </div>
             </div>
@@ -532,8 +532,8 @@ export default function TripPlanner() {
           </div>
 
           {/* Highway Facilities Quick Access */}
-          <div style={{ background: '#16162a', padding: '20px', borderRadius: 18, border: '1px solid #2d2d44' }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: '1.05rem', fontWeight: 800, color: '#a5b4fc' }}>
+          <div style={{ background: 'var(--color-bg-card)', padding: '20px', borderRadius: 18, border: '1px solid var(--color-border)' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-purple)' }}>
               🛠️ Highway Amenities & Emergency Contacts Along Route
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
@@ -541,9 +541,9 @@ export default function TripPlanner() {
                 { name: 'Om Sai 24/7 Heavy Truck Puncture Repair', phone: '+91 98234 56789', distance_km: 1.8, status: 'OPEN 24/7' },
                 { name: 'Nagpur Highway Mobile Mechanic', phone: '+91 97654 32109', distance_km: 3.2, status: 'OPEN 24/7' },
               ]).map((s, idx) => (
-                <div key={idx} style={{ background: '#111122', padding: '12px', borderRadius: 10, border: '1px solid #ef444433' }}>
-                  <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#fff' }}>{s.name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>📍 {s.distance_km} km away • {s.status}</div>
+                <div key={idx} style={{ background: 'var(--color-bg-primary)', padding: '12px', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-text-primary)' }}>{s.name}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '2px' }}>📍 {s.distance_km} km away • {s.status}</div>
                   <a
                     href={`tel:${s.phone.replace(/\s+/g, '')}`}
                     style={{
@@ -551,7 +551,7 @@ export default function TripPlanner() {
                       alignItems: 'center',
                       gap: '4px',
                       marginTop: '8px',
-                      background: '#10b981',
+                      background: 'var(--color-success)',
                       color: '#fff',
                       padding: '4px 10px',
                       borderRadius: 6,

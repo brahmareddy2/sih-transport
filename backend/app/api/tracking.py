@@ -34,10 +34,17 @@ router = APIRouter(prefix="/tracking", tags=["Fleet Tracking"])
 @router.get("/vehicles", response_model=List[VehicleStateResponse], summary="List all vehicle locations & status")
 def list_vehicle_states(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator", "driver")),
 ):
-    """Retrieve the real-time telemetry state of all vehicles in the fleet."""
+    """Retrieve the real-time telemetry state of all vehicles in the fleet (scoped for drivers)."""
     try:
+        if current_user.role == "driver":
+            from app.models.driver import Driver
+            driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
+            if not driver or not driver.assigned_vehicle_id:
+                return []
+            state = get_vehicle_state(driver.assigned_vehicle_id)
+            return [state]
         return get_all_vehicle_states()
     except Exception as e:
         logger.error("Failed listing vehicle states: %s", e)
@@ -50,13 +57,20 @@ def list_vehicle_states(
 def get_vehicle_tracking_state(
     vehicle_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator", "driver")),
 ):
     """Get the current position, speed, heading, and telemetry of a specific vehicle."""
     try:
+        if current_user.role == "driver":
+            from app.models.driver import Driver
+            driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
+            if not driver or driver.assigned_vehicle_id != vehicle_id:
+                raise HTTPException(status_code=403, detail="Access denied. You can only track your assigned vehicle.")
         return get_vehicle_state(vehicle_id)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Failed fetching vehicle state: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
@@ -69,14 +83,21 @@ def get_vehicle_location_history(
     vehicle_id: uuid.UUID,
     limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator", "driver")),
 ):
     """Get historical GPS breadcrumbs for a specific vehicle."""
     try:
+        if current_user.role == "driver":
+            from app.models.driver import Driver
+            driver = db.query(Driver).filter(Driver.user_id == current_user.id).first()
+            if not driver or driver.assigned_vehicle_id != vehicle_id:
+                raise HTTPException(status_code=403, detail="Access denied. You can only query history for your assigned vehicle.")
         crumbs = db.query(VehicleLocationHistory).filter(
             VehicleLocationHistory.vehicle_id == vehicle_id
         ).order_by(VehicleLocationHistory.recorded_at.desc()).limit(limit).all()
         return crumbs
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Failed fetching location history: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
@@ -89,7 +110,7 @@ def get_trip_location_history(
     trip_id: uuid.UUID,
     limit: int = Query(500, ge=1, le=2000),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """Get historical GPS breadcrumbs for a specific optimized trip/route."""
     try:
@@ -108,7 +129,7 @@ def get_trip_location_history(
 def run_start_simulation(
     payload: SimulationControlRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """Start simulated GPS movement for a vehicle along its route."""
     try:
@@ -124,7 +145,7 @@ def run_start_simulation(
 def run_pause_simulation(
     payload: SimulationControlRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """Pause simulated GPS movement for a vehicle (setting status to STOPPED)."""
     try:
@@ -137,7 +158,7 @@ def run_pause_simulation(
 def run_resume_simulation(
     payload: SimulationControlRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """Resume paused simulated GPS movement for a vehicle (setting status to IN_TRANSIT)."""
     try:
@@ -150,7 +171,7 @@ def run_resume_simulation(
 def run_stop_simulation(
     payload: SimulationControlRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """Stop GPS simulation and mark route completed."""
     try:
@@ -186,7 +207,7 @@ async def websocket_tracking(websocket: WebSocket, token: Optional[str] = Query(
 
         user_uuid = uuid.UUID(user_id)
         user = db_session.query(User).filter(User.id == user_uuid, User.is_active == True).first()
-        if not user or user.role not in ["admin", "operator", "fleet_manager"]:
+        if not user or user.role not in ["admin", "operator", "fleet_manager", "driver"]:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Forbidden role access")
             return
             
@@ -198,7 +219,7 @@ async def websocket_tracking(websocket: WebSocket, token: Optional[str] = Query(
         db.close()
 
     # Register active connection
-    ACTIVE_CONNECTIONS.append(websocket)
+    ACTIVE_CONNECTIONS.append({"socket": websocket, "role": user.role, "user_id": user.id})
     logger.info("WebSocket client connected. Active listeners: %d", len(ACTIVE_CONNECTIONS))
 
     try:
@@ -213,5 +234,6 @@ async def websocket_tracking(websocket: WebSocket, token: Optional[str] = Query(
     except Exception as e:
         logger.error("Error in websocket connection: %s", e)
     finally:
-        if websocket in ACTIVE_CONNECTIONS:
-            ACTIVE_CONNECTIONS.remove(websocket)
+        for conn in list(ACTIVE_CONNECTIONS):
+            if conn["socket"] == websocket:
+                ACTIVE_CONNECTIONS.remove(conn)

@@ -92,8 +92,27 @@ def get_active_trip(
     fuel_cost = float(route.estimated_fuel_cost_inr) if (route and route.estimated_fuel_cost_inr) else 36735.0
     total_cost = toll_cost + fuel_cost
 
+    # Look up city coords for origin & destination
+    from app.services.optimization.distance_matrix import INDIAN_CITIES
+    origin_info = INDIAN_CITIES.get(origin, {"lat": 28.7041, "lon": 77.1025})
+    dest_info = INDIAN_CITIES.get(destination, {"lat": 17.3850, "lon": 78.4867})
+    origin_coords = [origin_info.get("lat"), origin_info.get("lon")]
+    destination_coords = [dest_info.get("lat"), dest_info.get("lon")]
+
+    from app.models.route import RouteStop
+    path_coords = []
+    if route:
+        stops = db.query(RouteStop).filter(RouteStop.route_id == route.id).order_by(RouteStop.stop_sequence).all()
+        for s in stops:
+            if s.lat is not None and s.lon is not None:
+                path_coords.append([s.lat, s.lon])
+                
+    if not path_coords:
+        path_coords = [origin_coords, destination_coords]
+
     return {
         "has_trip": (route is not None),
+        "trip_id": str(route.id) if route else None,
         "route_number": route.route_number if route else "TRIP-DEMO-77",
         "origin": origin,
         "destination": destination,
@@ -107,6 +126,13 @@ def get_active_trip(
         "fuel_cost_inr": fuel_cost,
         "total_cost_inr": total_cost,
         "status": route.status.upper() if route else "IN_PROGRESS",
+        "origin_coords": origin_coords,
+        "destination_coords": destination_coords,
+        "path_coords": path_coords,
+        "vehicle_id": str(vehicle.id) if vehicle else None,
+        "registration_number": vehicle.registration_number if vehicle else None,
+        "current_lat": vehicle.current_lat if (vehicle and vehicle.current_lat is not None) else origin_coords[0],
+        "current_lon": vehicle.current_lon if (vehicle and vehicle.current_lon is not None) else origin_coords[1],
     }
 
 

@@ -542,7 +542,7 @@ def _create_return_cargo_notifications(
 ):
     """Emit notifications to operators and assigned drivers."""
     try:
-        operators = db.query(User).filter(User.role.in_(["admin", "operator", "fleet_manager"])).all()
+        operators = db.query(User).filter(User.role.in_(["admin", "fleet_operator"])).all()
         for op in operators:
             db.add(
                 Notification(

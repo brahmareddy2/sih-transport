@@ -16,6 +16,7 @@ const getSmartVoiceBaseUrl = () => {
     host.endsWith('.loca.lt') ||
     host.endsWith('.ngrok.io') ||
     host.endsWith('.ngrok-free.app') ||
+    host.endsWith('.lhr.life') ||
     host.includes('tunnel')
   ) {
     return ''
@@ -203,11 +204,25 @@ export const executeVoiceCommand = async ({ query, language = 'en', confirmed = 
     }
 
     return {
-      text: `Voice Command Processed: ${query}`,
-      speech_text: `Voice command processed.`,
+      text: `General voice command executed: ${query}`,
+      speech_text: `Command executed.`,
       language,
       requires_confirmation: false,
       card_type: 'GENERAL_RESPONSE',
     }
+  }
+}
+
+export const transcribeAudio = async (audioBase64, language = 'en') => {
+  try {
+    const res = await axios.post(
+      `${API_BASE}/api/v1/voice/transcribe`,
+      { audio_base64: audioBase64, language },
+      { headers: getAuthHeaders() }
+    )
+    return res.data
+  } catch (err) {
+    console.error('Failed to transcribe audio on server:', err)
+    throw err
   }
 }

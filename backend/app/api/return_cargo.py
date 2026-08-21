@@ -103,7 +103,7 @@ def _build_match_response(m: ReturnCargoMatch) -> Dict[str, Any]:
 )
 def get_return_opportunities(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """
     List all vehicles in the fleet that are currently away from their home depot
@@ -171,7 +171,7 @@ def get_return_opportunities(
 def search_return_cargo(
     payload: ReturnCargoSearchRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """
     Search and generate ranked return cargo matches for a vehicle or city pair.
@@ -233,7 +233,7 @@ def list_return_cargo_matches(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """List return cargo matches with status, vehicle, and score filters."""
     q = db.query(ReturnCargoMatch)
@@ -265,7 +265,7 @@ def list_return_cargo_matches(
 )
 def get_return_cargo_analytics(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """Calculate aggregate KPIs on empty-kilometer reduction, fuel saved, and cost benefits."""
     total_matches = db.query(ReturnCargoMatch).count()
@@ -336,7 +336,7 @@ def get_return_cargo_analytics(
 def get_return_cargo_match(
     match_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     m = db.query(ReturnCargoMatch).filter(ReturnCargoMatch.id == match_id).first()
     if not m:
@@ -356,7 +356,7 @@ def get_matches_for_vehicle(
     max_detour_km: float = Query(300.0, ge=0.0),
     min_score: float = Query(0.0, ge=0.0, le=100.0),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """
     Evaluate and return ranked compatible return cargo shipments for a specific vehicle.
@@ -390,7 +390,7 @@ def get_matches_for_vehicle(
 def refresh_return_match(
     match_id: uuid.UUID,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """Recompute compatibility, cost metrics, and score for a match."""
     m = db.query(ReturnCargoMatch).filter(ReturnCargoMatch.id == match_id).first()
@@ -424,7 +424,7 @@ def approve_match(
     match_id: uuid.UUID,
     payload: ApproveMatchRequest = ApproveMatchRequest(),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """
     Approve a return cargo match:
@@ -467,7 +467,7 @@ def reject_match(
     match_id: uuid.UUID,
     payload: RejectMatchRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_roles("admin", "operator")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
 ):
     """Reject a return cargo match with an explanation reason."""
     m = db.query(ReturnCargoMatch).filter(ReturnCargoMatch.id == match_id).first()

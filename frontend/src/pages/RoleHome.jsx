@@ -15,7 +15,7 @@ export default function RoleHome() {
   const [pendingUsers, setPendingUsers] = useState([])
   const [loadingUsers, setLoadingUsers] = useState(false)
 
-  const role = user?.role || 'operator'
+  const role = user?.role || 'fleet_operator'
 
   useEffect(() => {
     if (role === 'admin') {
@@ -54,24 +54,18 @@ export default function RoleHome() {
     driver: [
       { icon: '🎤', title: 'ASK VOICE ASSISTANT', desc: 'Speak to plan trips, check fuel, or report issues', action: () => { setInitialVoiceQuery(''); setIsVoiceOpen(true); }, accent: '#6366f1', hero: true },
       { icon: '🚛', title: 'MY ACTIVE TRIP', desc: 'View current route, destination, and remaining hours', path: '/driver-mode', accent: '#10b981' },
-      { icon: '📍', title: 'LIVE GPS LOCATION', desc: 'Monitor vehicle speed, coordinates & telematics', path: '/tracking', accent: '#06b6d4' },
+      { icon: '📍', title: 'LIVE GPS LOCATION', desc: 'Monitor vehicle speed, coordinates & telematics', path: '/driver-mode', accent: '#06b6d4' },
       { icon: '⛽', title: 'DIESEL & BUNKERING', desc: 'Check fuel level and nearest highway fuel stations', path: '/driver-mode', accent: '#f59e0b' },
       { icon: '🚨', title: 'EMERGENCY HELP', desc: 'Instant breakdown, accident & puncture response', path: '/driver-mode', accent: '#ef4444' },
       { icon: '🔄', title: 'RETURN LOADS', desc: 'Find return cargo to eliminate empty return miles', path: '/return-cargo', accent: '#8b5cf6' },
     ],
-    operator: [
-      { icon: '🎤', title: 'ASK CARGO PILOT', desc: 'Voice query for fleet status, delayed shipments, bottlenecks', action: () => { setInitialVoiceQuery(''); setIsVoiceOpen(true); }, accent: '#6366f1', hero: true },
-      { icon: '🚛', title: 'FLEET DIRECTORY', desc: 'Manage active vehicles and drivers across India', path: '/tracking', accent: '#10b981' },
-      { icon: '📦', title: 'SHIPMENTS & CONSOLIDATION', desc: 'Multi-order load consolidation and capacity planning', path: '/operator', accent: '#06b6d4' },
-      { icon: '🛣️', title: 'ROUTE OPTIMIZATION', desc: 'Google OR-Tools CVRPTW solver with 5 preset scenarios', path: '/operator', accent: '#3b82f6' },
+    fleet_operator: [
+      { icon: '🎤', title: 'ASK CARGO PILOT', desc: 'Voice query for fleet status, delayed shipments, fuel expenses', action: () => { setInitialVoiceQuery(''); setIsVoiceOpen(true); }, accent: '#6366f1', hero: true },
+      { icon: '🛣️', title: 'ROUTE OPTIMIZATION', desc: 'Google OR-Tools solver with capacity & time window constraints', path: '/fleet-operator', accent: '#3b82f6' },
+      { icon: '🚛', title: 'FLEET TELEMATICS & GPS', desc: 'Real-time vehicle health, speed, and fuel consumption', path: '/fleet-operator', accent: '#10b981' },
+      { icon: '🔄', title: 'RETURN CARGO / BACKHAUL', desc: 'Backhaul matches to reduce empty-km and save fuel', path: '/return-cargo', accent: '#8b5cf6' },
       { icon: '🚨', title: 'INCIDENTS & RECOVERY', desc: 'Simulate disruptions and review multi-criteria recovery plans', path: '/incidents', accent: '#ef4444' },
-      { icon: '🔄', title: 'RETURN CARGO MATCHING', desc: 'Backhaul matches to reduce empty kilometers', path: '/return-cargo', accent: '#8b5cf6' },
-    ],
-    fleet_manager: [
-      { icon: '🎤', title: 'ASK FLEET ASSISTANT', desc: 'Query available vehicles, fuel expenses, and driver safety', action: () => { setInitialVoiceQuery(''); setIsVoiceOpen(true); }, accent: '#6366f1', hero: true },
-      { icon: '🚛', title: 'ACTIVE FLEET TELEMATICS', desc: 'Real-time vehicle health, speed, and fuel consumption', path: '/tracking', accent: '#10b981' },
       { icon: '💰', title: 'COST & FUEL ANALYTICS', desc: 'Operational expense breakdown and fuel cost optimization', path: '/analytics', accent: '#f59e0b' },
-      { icon: '🔄', title: 'RETURN CARGO / BACKHAUL', desc: '36.2% empty-km reduction with freight matching', path: '/return-cargo', accent: '#8b5cf6' },
       { icon: '⚡', title: 'WHAT-IF SIMULATOR', desc: '9 contingency disruption scenarios with before/after matrix', path: '/what-if', accent: '#06b6d4' },
       { icon: '🤖', title: 'AI MODEL REGISTRY', desc: 'Demand forecasting, delay risk classifier, and ANN diagnostics', path: '/ml', accent: '#ec4899' },
     ],
@@ -92,7 +86,7 @@ export default function RoleHome() {
     ],
   }
 
-  const tiles = ROLE_TILES[role] || ROLE_TILES.operator
+  const tiles = ROLE_TILES[role] || ROLE_TILES.fleet_operator
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px', fontFamily: "'Inter', sans-serif" }}>
@@ -256,14 +250,14 @@ export default function RoleHome() {
             style={{
               padding: '24px',
               borderRadius: 20,
-              background: '#16162a',
+              background: 'var(--color-bg-card)',
               border: `1px solid ${tile.accent}33`,
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
               transition: 'all 0.2s ease-in-out',
-              boxShadow: '0 8px 20px rgba(0,0,0,0.3)',
+              boxShadow: 'var(--shadow-card)',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translateY(-4px)'
@@ -273,15 +267,15 @@ export default function RoleHome() {
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translateY(0)'
               e.currentTarget.style.borderColor = `${tile.accent}33`
-              e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.3)'
+              e.currentTarget.style.boxShadow = 'var(--shadow-card)'
             }}
           >
             <div>
               <div style={{ fontSize: '2.5rem', marginBottom: '14px' }}>{tile.icon}</div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#fff' }}>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>
                 {tile.title}
               </h3>
-              <p style={{ margin: '8px 0 0', color: '#9ca3af', fontSize: '0.9rem', lineHeight: 1.4 }}>
+              <p style={{ margin: '8px 0 0', color: 'var(--color-text-secondary)', fontSize: '0.9rem', lineHeight: 1.4 }}>
                 {tile.desc}
               </p>
             </div>

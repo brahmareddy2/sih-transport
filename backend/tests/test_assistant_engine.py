@@ -39,6 +39,27 @@ app.dependency_overrides[get_current_user] = mock_get_current_user
 client = TestClient(app)
 
 
+@pytest.fixture(scope="module", autouse=True)
+def ensure_mock_user_exists():
+    from app.core.database import SessionLocal
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == _mock_admin.id).first()
+        if not user:
+            db.add(User(
+                id=_mock_admin.id,
+                email=_mock_admin.email,
+                password_hash=_mock_admin.password_hash,
+                full_name=_mock_admin.full_name,
+                role=_mock_admin.role,
+                is_active=_mock_admin.is_active,
+                is_approved=True,
+            ))
+            db.commit()
+    finally:
+        db.close()
+
+
 @pytest.fixture
 def engine():
     return get_assistant_intent_engine()

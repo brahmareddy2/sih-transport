@@ -58,3 +58,26 @@ def readiness_check(db: Session = Depends(get_db)):
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "1.0.0-phase1",
     }
+
+
+@router.get("/health/db", summary="Database connectivity check")
+def db_health_check(db: Session = Depends(get_db)):
+    """
+    Explicit database connectivity check.
+    Returns 200 with connection status and type if online, or 503.
+    """
+    try:
+        db.execute(text("SELECT 1"))
+        db_type = db.bind.dialect.name
+        return {
+            "status": "connected",
+            "database_type": db_type,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        logger.error("[Health Check] Database connectivity failed: %s", e)
+        from fastapi import HTTPException, status
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Database connection failed: {str(e)}"
+        )

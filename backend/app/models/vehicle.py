@@ -5,7 +5,7 @@ Covers Indian vehicle types: mini_truck, tempo, medium_truck, large_truck, trail
 import uuid
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Date, DateTime, Double, Numeric, String
+from sqlalchemy import Boolean, Date, DateTime, Double, Numeric, String, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -58,6 +58,14 @@ class Vehicle(Base):
     status: Mapped[str] = mapped_column(
         String(20), default="available"
         # available | in_transit | maintenance | breakdown | idle
+    )
+
+    # Scoping and real-time load
+    operator_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    current_load_kg: Mapped[float] = mapped_column(
+        Numeric(10, 2), default=0.0, nullable=False
     )
 
     # Maintenance tracking

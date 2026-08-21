@@ -1,7 +1,62 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { LANGUAGES, useI18nStore } from '../../services/i18n'
-import { executeVoiceCommand } from '../../services/voiceApi'
+import { executeVoiceCommand, transcribeAudio } from '../../services/voiceApi'
 import CommunicationModal from './CommunicationModal'
+
+// Helper function to encode AudioBuffer to standard 16-bit WAV format
+function bufferToWav(buffer) {
+  let numOfChan = buffer.numberOfChannels,
+      length = buffer.length * numOfChan * 2 + 44,
+      bufferArr = new ArrayBuffer(length),
+      view = new DataView(bufferArr),
+      channels = [], i, sample,
+      offset = 0,
+      pos = 0;
+
+  // write WAV header
+  setUint32(0x46464952);                         // "RIFF"
+  setUint32(length - 8);                         // file length - 8
+  setUint32(0x45564157);                         // "WAVE"
+
+  setUint32(0x20746d66);                         // "fmt " chunk
+  setUint32(16);                                 // chunk length
+  setUint16(1);                                  // sample format (raw)
+  setUint16(numOfChan);
+  setUint32(buffer.sampleRate);
+  setUint32(buffer.sampleRate * 2 * numOfChan); // byte rate
+  setUint16(numOfChan * 2);                      // block align
+  setUint16(16);                                 // bits per sample
+
+  setUint32(0x61746164);                         // "data" chunk
+  setUint32(length - pos - 4);                   // chunk length
+
+  // write interleaved channels
+  for(i=0; i<buffer.numberOfChannels; i++)
+    channels.push(buffer.getChannelData(i));
+
+  while(pos < length) {
+    for(i=0; i<numOfChan; i++) {             // interleave channels
+      sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
+      sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF); // scale to 16-bit signed int
+      view.setInt16(pos, sample, true);          // write 16-bit sample
+      pos += 2;
+    }
+    offset++;
+  }
+
+  return new Blob([bufferArr], {type: 'audio/wav'});
+
+  function setUint16(data) {
+    view.setUint16(pos, data, true);
+    pos += 2;
+  }
+
+  function setUint32(data) {
+    view.setUint32(pos, data, true);
+    pos += 4;
+  }
+}
 
 export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = '' }) {
   const { language, setLanguage, detectAndSetLanguage, t } = useI18nStore()
@@ -16,6 +71,8 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
   const [errorMessage, setErrorMessage] = useState('')
   const [commTarget, setCommTarget] = useState(null)
   const [isCommOpen, setIsCommOpen] = useState(false)
+  const [selectedRouteId, setSelectedRouteId] = useState('best_route')
+  const [mapProgress, setMapProgress] = useState(0)
 
   const recognitionRef = useRef(null)
 
@@ -28,12 +85,14 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
     if (SpeechRecognition) {
       try {
+        console.log('[Voice Assistant] Initializing SpeechRecognition engine...');
         const recognition = new SpeechRecognition()
         recognition.continuous = false
         recognition.interimResults = true
         recognition.lang = speechCode
 
         recognition.onstart = () => {
+          console.log('[Voice Assistant] SpeechRecognition.onstart fired: Recording started successfully.');
           setIsListening(true)
           setErrorMessage('')
         }
@@ -48,6 +107,7 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
               interim += event.results[i][0].transcript
             }
           }
+          console.log(`[Voice Assistant] SpeechRecognition.onresult fired. Interim: "${interim}", Final: "${finalTranscript}"`);
           if (interim) {
             setInterimText(interim)
           }
@@ -55,12 +115,13 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
             setTranscript(finalTranscript)
             setInterimText('')
             setIsListening(false)
+            console.log(`[Voice Assistant] Sending final transcribed text to backend: "${finalTranscript}"`);
             handleCommand(finalTranscript, false)
           }
         }
 
         recognition.onerror = (event) => {
-          console.warn('Speech recognition error:', event.error)
+          console.warn('[Voice Assistant] SpeechRecognition.onerror fired:', event.error)
           setIsListening(false)
           if (event.error === 'not-allowed') {
             setErrorMessage('⚠️ Microphone permission is blocked. Please allow mic access in your browser or type below.')
@@ -68,19 +129,24 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
             setErrorMessage('⚠️ No speech detected. Please tap the mic and speak clearly.')
           } else if (event.error === 'network') {
             setErrorMessage('⚠️ Speech network timeout. You can use the instant voice test buttons or type below.')
+          } else {
+            setErrorMessage(`⚠️ Speech recognition error: ${event.error}`)
           }
         }
 
         recognition.onend = () => {
+          console.log('[Voice Assistant] SpeechRecognition.onend fired: Recording stopped.');
           setIsListening(false)
         }
 
         recognitionRef.current = recognition
         setVoiceAvailable(true)
       } catch (e) {
+        console.error('[Voice Assistant] SpeechRecognition instantiation error:', e);
         setVoiceAvailable(false)
       }
     } else {
+      console.warn('[Voice Assistant] SpeechRecognition is not supported in this browser.');
       setVoiceAvailable(false)
     }
 
@@ -103,38 +169,128 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
         handleCommand(initialQuery, false)
       }
     }
-  }, [isOpen, initialQuery])
+  }, [isOpen, initialQuery])  // Handle live progress bar map animation
+  useEffect(() => {
+    let interval
+    if (isOpen) {
+      interval = setInterval(() => {
+        setMapProgress((prev) => (prev >= 100 ? 0 : prev + 2))
+      }, 150)
+    } else {
+      setMapProgress(0)
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isOpen])
+
+  // Lock body and html scroll when modal is open, restore on close/unmount
+  useEffect(() => {
+    if (isOpen) {
+      const originalBodyOverflow = document.body.style.overflow
+      const originalHtmlOverflow = document.documentElement.style.overflow
+      
+      document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
+
+      // Prevent scroll event bubbling to background on desktop/mobile
+      const preventDefaultScroll = (e) => {
+        const scrollableContent = document.getElementById('modal-scrollable-content')
+        if (scrollableContent && scrollableContent.contains(e.target)) {
+          return // Allow scrolling inside the assistant modal content
+        }
+        // Block scrolling on backdrop / background page
+        if (e.cancelable) {
+          e.preventDefault()
+        }
+      }
+
+      window.addEventListener('wheel', preventDefaultScroll, { passive: false })
+      window.addEventListener('touchmove', preventDefaultScroll, { passive: false })
+      
+      return () => {
+        document.body.style.overflow = originalBodyOverflow
+        document.documentElement.style.overflow = originalHtmlOverflow
+        window.removeEventListener('wheel', preventDefaultScroll)
+        window.removeEventListener('touchmove', preventDefaultScroll)
+      }
+    }
+  }, [isOpen])
+
 
   const startListening = () => {
     setErrorMessage('')
     setResponse(null)
     setTranscript('')
     setInterimText('')
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.lang = speechCode
-        recognitionRef.current.start()
-        setIsListening(true)
-      } catch (e) {
-        // If already started, stop and restart
-        try {
-          recognitionRef.current.stop()
-          setTimeout(() => recognitionRef.current.start(), 200)
-          setIsListening(true)
-        } catch (err) {
-          setIsListening(false)
-        }
-      }
-    } else {
-      setErrorMessage('Speech recognition is not supported in this browser. Please type your query or use the test voice buttons.')
+
+    // 1. Check for secure origin
+    const isSecure = window.location.protocol === 'https:' || 
+                     window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+    
+    if (!isSecure) {
+      const secureMsg = '⚠️ Microphone capture is blocked on non-secure (HTTP) origins in modern browsers. Please use localhost or connect via HTTPS.';
+      console.error('[Voice Assistant] Secure origin requirement failed:', window.location.origin);
+      setErrorMessage(secureMsg);
+      return;
     }
+
+    // 2. Request microphone stream via getUserMedia explicitly
+    console.log('[Voice Assistant] Requesting getUserMedia microphone permission...');
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        console.log('[Voice Assistant] Microphone stream acquired successfully. Permission granted.');
+        
+        // Stop the temp stream tracks immediately to release device for SpeechRecognition
+        stream.getTracks().forEach(track => track.stop());
+
+        if (recognitionRef.current) {
+          try {
+            console.log('[Voice Assistant] Starting SpeechRecognition instance...');
+            recognitionRef.current.lang = speechCode
+            recognitionRef.current.start()
+            setIsListening(true)
+          } catch (e) {
+            console.warn('[Voice Assistant] SpeechRecognition start caught exception, attempting stop & restart:', e);
+            // If already started, stop and restart
+            try {
+              recognitionRef.current.stop()
+              setTimeout(() => {
+                recognitionRef.current.start()
+                setIsListening(true)
+              }, 200)
+            } catch (err) {
+              console.error('[Voice Assistant] Restart SpeechRecognition failed:', err);
+              setIsListening(false)
+              setErrorMessage('⚠️ Could not start speech recording device.')
+            }
+          }
+        } else {
+          setErrorMessage('Speech recognition is not supported in this browser. Please type your query.')
+        }
+      })
+      .catch((err) => {
+        console.error('[Voice Assistant] getUserMedia permission check failed:', err);
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setErrorMessage('⚠️ Microphone permission denied. Please allow mic access in your browser settings.');
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setErrorMessage('⚠️ No microphone detected. Please plug in a microphone.');
+        } else {
+          setErrorMessage(`⚠️ Microphone access failed: ${err.message}`);
+        }
+        setIsListening(false);
+      });
   }
 
   const stopListening = () => {
+    console.log('[Voice Assistant] Stopping mic capture manually...');
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
-      } catch {}
+      } catch (e) {
+        console.warn('[Voice Assistant] Error calling SpeechRecognition.stop:', e);
+      }
     }
     setIsListening(false)
   }
@@ -152,6 +308,9 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
         action_payload: actionPayload,
       })
       setResponse(res)
+      if (res && res.card_data && res.card_data.route_options) {
+        setSelectedRouteId('best_route')
+      }
 
       // Auto-speak response if speech synthesis available
       if (res && res.speech_text) {
@@ -188,11 +347,12 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
   }
 
   const handleManualSubmit = (e) => {
-    e.preventDefault()
+    if (e) e.preventDefault()
     if (!inputText.trim()) return
-    setTranscript(inputText)
-    handleCommand(inputText, false)
+    const query = inputText.trim()
     setInputText('')
+    setTranscript(query)
+    handleCommand(query, false)
   }
 
   const QUICK_TEST_QUERIES = [
@@ -206,7 +366,14 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
 
   if (!isOpen) return null
 
-  return (
+  // Bezier calculator for dynamic lorry coordinates
+  const getBezierPoint = (t, p0, p1, p2) => {
+    const x = (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x;
+    const y = (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y;
+    return { x, y };
+  };
+
+  return createPortal(
     <div
       style={{
         position: 'fixed',
@@ -290,6 +457,7 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
 
         {/* Modal Body */}
         <div
+          id="modal-scrollable-content"
           style={{
             padding: '24px',
             overflowY: 'auto',
@@ -505,103 +673,335 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
           )}
 
           {/* Visual Card Result */}
-          {response && !response.requires_confirmation && (
+          {response && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Text Summary + Speech Button */}
-              <div
-                style={{
-                  padding: '16px 20px',
-                  background: '#1c1c34',
-                  borderRadius: 16,
-                  border: '1px solid #3b3b5c',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
-                  <div style={{ fontSize: '0.95rem', color: '#e2e8f0', lineHeight: 1.5 }}>
-                    {response.text}
-                  </div>
-                  <button
-                    onClick={() => speakText(response.speech_text || response.text, response.language)}
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: 10,
-                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                      color: '#fff',
-                      border: 'none',
-                      fontWeight: 800,
-                      fontSize: '0.82rem',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                  >
-                    <span>🔊</span>
-                    <span>{t('listen', 'Listen')}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* DRIVER TRIP CARD */}
-              {(response.card_type === 'DRIVER_TRIP_CARD' || response.card_type === 'TRIP_RESULT') && response.card_data && (
+              {!response.requires_confirmation && (
                 <div
                   style={{
-                    padding: '20px',
-                    background: 'linear-gradient(135deg, #1b1b2d, #202038)',
-                    borderRadius: 18,
-                    border: '1px solid #6366f144',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '14px',
+                    padding: '16px 20px',
+                    background: '#1c1c34',
+                    borderRadius: 16,
+                    border: '1px solid #3b3b5c',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>
-                      {response.card_data.title || `${response.card_data.origin} ➔ ${response.card_data.destination}`}
-                    </h4>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '3px 8px', borderRadius: 6, background: '#10b98122', color: '#10b981' }}>
-                      AI Route Solver
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-                    <div style={{ padding: '12px', background: '#141422', borderRadius: 10, textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase' }}>Distance</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>
-                        ~{response.card_data.distance_km} km
-                      </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px' }}>
+                    <div style={{ fontSize: '0.95rem', color: '#e2e8f0', lineHeight: 1.5 }}>
+                      {response.text}
                     </div>
-                    <div style={{ padding: '12px', background: '#141422', borderRadius: 10, textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase' }}>Driving Time</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#60a5fa', marginTop: '2px' }}>
-                        ~{response.card_data.driving_hours} hrs
-                      </div>
-                    </div>
-                    <div style={{ padding: '12px', background: '#141422', borderRadius: 10, textAlign: 'center' }}>
-                      <div style={{ fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase' }}>Est. Diesel</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#fbbf24', marginTop: '2px' }}>
-                        ~{response.card_data.fuel_required_litres || response.card_data.fuel_litres} L
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '10px' }}>
-                    <div style={{ padding: '10px 14px', background: '#141422', borderRadius: 10 }}>
-                      <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Fuel Cost:</div>
-                      <strong style={{ color: '#fff' }}>₹{response.card_data.fuel_cost_inr?.toLocaleString?.()}</strong>
-                    </div>
-                    <div style={{ padding: '10px 14px', background: '#141422', borderRadius: 10 }}>
-                      <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>Toll Cost:</div>
-                      <strong style={{ color: '#fff' }}>₹{response.card_data.toll_cost_inr?.toLocaleString?.()}</strong>
-                    </div>
-                    <div style={{ padding: '10px 14px', background: '#10b98118', border: '1px solid #10b98144', borderRadius: 10 }}>
-                      <div style={{ fontSize: '0.7rem', color: '#10b981' }}>Total Trip Cost:</div>
-                      <strong style={{ color: '#10b981', fontSize: '1.05rem' }}>₹{response.card_data.total_cost_inr?.toLocaleString?.()}</strong>
-                    </div>
+                    <button
+                      onClick={() => speakText(response.speech_text || response.text, response.language)}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: 10,
+                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                        color: '#fff',
+                        border: 'none',
+                        fontWeight: 800,
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span>🔊</span>
+                      <span>{t('listen', 'Listen')}</span>
+                    </button>
                   </div>
                 </div>
               )}
+
+              {/* DRIVER TRIP CARD */}
+              {(response.card_type === 'DRIVER_TRIP_CARD' || response.card_type === 'TRIP_RESULT') && response.card_data && (() => {
+                const routeOptions = response.card_data.route_options || [
+                  {
+                    id: 'best_route',
+                    name: response.card_data.corridor_name 
+                      ? `Best Route (${response.card_data.corridor_name})` 
+                      : 'Best Route (NH44 Main Freight Corridor)',
+                    distance_km: response.card_data.distance_km,
+                    duration_hours: response.card_data.driving_hours || response.card_data.duration_hours,
+                    fuel_litres: response.card_data.fuel_required_litres || response.card_data.fuel_litres,
+                    fuel_cost_inr: response.card_data.fuel_cost_inr,
+                    toll_cost_inr: response.card_data.toll_cost_inr,
+                    total_cost_inr: response.card_data.total_cost_inr,
+                    highlights: response.card_data.corridor_name?.toLowerCase()?.includes('nh16')
+                      ? ['Coastal NH16 Section', 'Coastal Highway']
+                      : ['Smooth 4-lane NH44', 'High Dhaba Density'],
+                  }
+                ];
+
+                const activeRoute = routeOptions.find(r => r.id === selectedRouteId) || routeOptions[0];
+                const activeTollsCount = response.card_data.toll_plazas && response.card_data.toll_plazas.length > 0
+                  ? response.card_data.toll_plazas.length
+                  : (activeRoute.id === 'best_route' ? 6 : activeRoute.id === 'fastest_route' ? 7 : 3);
+
+                // Bezier coordinates logic for live lorry movement
+                const tVal = mapProgress / 100;
+                const p0 = { x: 40, y: 50 };
+                const p2 = { x: 320, y: 50 };
+                const p1 = selectedRouteId === 'best_route' 
+                  ? { x: 180, y: 15 } 
+                  : selectedRouteId === 'fastest_route' 
+                  ? { x: 180, y: 85 } 
+                  : { x: 180, y: 50 };
+                const truckPos = getBezierPoint(tVal, p0, p1, p2);
+
+                const isVijayawadaToVizag = 
+                  (response.card_data.origin?.toLowerCase().includes('vijayawada') && (response.card_data.destination?.toLowerCase().includes('visakhapatnam') || response.card_data.destination?.toLowerCase().includes('vizag'))) ||
+                  ((response.card_data.origin?.toLowerCase().includes('visakhapatnam') || response.card_data.origin?.toLowerCase().includes('vizag')) && response.card_data.destination?.toLowerCase().includes('vijayawada'));
+
+                const tollPlazasList = response.card_data.toll_plazas && response.card_data.toll_plazas.length > 0
+                  ? response.card_data.toll_plazas
+                  : (isVijayawadaToVizag 
+                      ? [
+                          {"name": "Kalaparru Toll Plaza", "location": "NH-16 Section", "cost_inr": 120},
+                          {"name": "Veeravalli Toll Plaza", "location": "NH-16 Section", "cost_inr": 110},
+                          {"name": "Kovvuru Toll Plaza", "location": "Godavari Fourth Bridge", "cost_inr": 100},
+                          {"name": "Krishnavaram Toll Plaza", "location": "NH-16 Section", "cost_inr": 120},
+                          {"name": "Vempadu Toll Plaza", "location": "NH-16 Section", "cost_inr": 140},
+                          {"name": "Panchvati Colony Toll Plaza", "location": "NH-516C, Visakhapatnam", "cost_inr": 130}
+                        ]
+                      : [
+                          {"name": "Yamuna Expressway Toll Gate", "location": "Agra-Mathura Section", "cost_inr": 650},
+                          {"name": "Gwalior Bypass Toll Plaza", "location": "NH44 Mile 320", "cost_inr": 380},
+                          {"name": "Babina Toll Plaza", "location": "Jhansi-Lalitpur Section", "cost_inr": 320},
+                          {"name": "Nagpur Outer Ring Toll Plaza", "location": "NH44 Nagpur Hub", "cost_inr": 540},
+                          {"name": "Pimpalgaon Border Toll Plaza", "location": "Maharashtra-Telangana Border", "cost_inr": 480},
+                          {"name": "Medchal Outer Toll Plaza", "location": "Hyderabad Entrance", "cost_inr": 480}
+                        ]);
+
+                return (
+                  <div
+                    style={{
+                      padding: '20px',
+                      background: 'linear-gradient(135deg, #1b1b2d, #202038)',
+                      borderRadius: 18,
+                      border: '1px solid #6366f144',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '14px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#fff' }}>
+                        {response.card_data.corridor_name || response.card_data.title || `${response.card_data.origin} ➔ ${response.card_data.destination}`}
+                      </h4>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '3px 8px', borderRadius: 6, background: '#10b98122', color: '#10b981' }}>
+                        AI Route Solver
+                      </span>
+                    </div>
+
+                    {/* Route Option Tabs Switcher */}
+                    <div style={{ display: 'flex', gap: '8px', background: '#141422', padding: '4px', borderRadius: 10 }}>
+                      {routeOptions.map((opt) => (
+                        <button
+                          key={opt.id}
+                          onClick={() => setSelectedRouteId(opt.id)}
+                          style={{
+                            flex: 1,
+                            padding: '8px 4px',
+                            borderRadius: 8,
+                            border: 'none',
+                            background: selectedRouteId === opt.id ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'transparent',
+                            color: selectedRouteId === opt.id ? '#fff' : '#9ca3af',
+                            fontWeight: 800,
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                          }}
+                        >
+                          {opt.id === 'best_route' ? '⭐ Best' : opt.id === 'fastest_route' ? '⚡ Fastest' : '🪙 Economy'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Map Visualizer */}
+                    <div style={{ background: '#0f0f1c', borderRadius: 12, padding: '12px', border: '1px solid #2d2d48' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#9ca3af' }}>🗺️ Live Navigation Route</span>
+                        <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 800 }}>NH16 Corridor</span>
+                      </div>
+                      <div style={{ height: '110px', width: '100%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="100%" height="100%" viewBox="0 0 360 100" style={{ position: 'absolute', top: 0, left: 0 }}>
+                          <defs>
+                            <linearGradient id="routeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#34d399" />
+                              <stop offset="50%" stopColor="#6366f1" />
+                              <stop offset="100%" stopColor="#a855f7" />
+                            </linearGradient>
+                          </defs>
+                          <line x1="0" y1="25" x2="360" y2="25" stroke="#1c1c2e" strokeDasharray="4,4" />
+                          <line x1="0" y1="50" x2="360" y2="50" stroke="#1c1c2e" strokeDasharray="4,4" />
+                          <line x1="0" y1="75" x2="360" y2="75" stroke="#1c1c2e" strokeDasharray="4,4" />
+                          
+                          <path
+                            d={
+                              selectedRouteId === 'best_route' 
+                                ? "M 40 50 Q 180 15, 320 50" 
+                                : selectedRouteId === 'fastest_route'
+                                ? "M 40 50 Q 180 85, 320 50"
+                                : "M 40 50 L 180 50 L 320 50"
+                            }
+                            fill="none"
+                            stroke="url(#routeGradient)"
+                            strokeWidth="4"
+                            strokeDasharray="8,4"
+                            strokeDashoffset={-mapProgress}
+                            style={{ transition: 'all 0.5s ease-in-out' }}
+                          />
+
+                          {/* Animated Moving Lorry */}
+                          <g transform={`translate(${truckPos.x - 10}, ${truckPos.y - 12})`} style={{ transition: 'transform 0.15s linear' }}>
+                            <text fontSize="18">🚚</text>
+                          </g>
+
+                          {/* Render Toll Markers (red) */}
+                          <circle cx="110" cy={selectedRouteId === 'best_route' ? 36 : selectedRouteId === 'fastest_route' ? 64 : 50} r="4" fill="#ef4444" />
+                          <circle cx="180" cy={selectedRouteId === 'best_route' ? 32 : selectedRouteId === 'fastest_route' ? 68 : 50} r="4" fill="#ef4444" />
+                          <circle cx="250" cy={selectedRouteId === 'best_route' ? 36 : selectedRouteId === 'fastest_route' ? 64 : 50} r="4" fill="#ef4444" />
+
+                          {/* Render Sleep/Rest Stops (green) */}
+                          <circle cx="140" cy={selectedRouteId === 'best_route' ? 34 : selectedRouteId === 'fastest_route' ? 66 : 50} r="4" fill="#10b981" />
+                          <circle cx="210" cy={selectedRouteId === 'best_route' ? 34 : selectedRouteId === 'fastest_route' ? 66 : 50} r="4" fill="#10b981" />
+
+                          {/* Start Point */}
+                          <circle cx="40" cy="50" r="7" fill="#10b981" stroke="#fff" strokeWidth="1.5" />
+                          <text x="40" y="72" fill="#fff" fontSize="9" fontWeight="bold" textAnchor="middle">
+                            {response.card_data.origin}
+                          </text>
+
+                          {/* End Point */}
+                          <circle cx="320" cy="50" r="7" fill="#8b5cf6" stroke="#fff" strokeWidth="1.5" />
+                          <text x="320" y="72" fill="#fff" fontSize="9" fontWeight="bold" textAnchor="middle">
+                            {response.card_data.destination}
+                          </text>
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                      <div style={{ padding: '12px', background: '#141422', borderRadius: 10, textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.68rem', color: '#9ca3af', textTransform: 'uppercase' }}>Distance</div>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', marginTop: '2px' }}>
+                          ~{activeRoute.distance_km} km
+                        </div>
+                      </div>
+                      <div style={{ padding: '12px', background: '#141422', borderRadius: 10, textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.68rem', color: '#9ca3af', textTransform: 'uppercase' }}>Driving Time</div>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#60a5fa', marginTop: '2px' }}>
+                          ~{activeRoute.duration_hours} hrs
+                        </div>
+                      </div>
+                      <div style={{ padding: '12px', background: '#141422', borderRadius: 10, textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.68rem', color: '#9ca3af', textTransform: 'uppercase' }}>Est. Diesel</div>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fbbf24', marginTop: '2px' }}>
+                          ~{activeRoute.fuel_litres} L
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Cost Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr', gap: '10px' }}>
+                      <div style={{ padding: '10px 14px', background: '#141422', borderRadius: 10 }}>
+                        <div style={{ fontSize: '0.68rem', color: '#9ca3af' }}>Fuel Cost:</div>
+                        <strong style={{ color: '#fff', fontSize: '0.85rem' }}>₹{activeRoute.fuel_cost_inr?.toLocaleString?.()}</strong>
+                      </div>
+                      <div style={{ padding: '10px 14px', background: '#141422', borderRadius: 10 }}>
+                        <div style={{ fontSize: '0.68rem', color: '#9ca3af' }}>Tolls ({activeTollsCount} Plazas):</div>
+                        <strong style={{ color: '#fff', fontSize: '0.85rem' }}>₹{activeRoute.toll_cost_inr?.toLocaleString?.()}</strong>
+                      </div>
+                      <div style={{ padding: '10px 14px', background: '#10b98118', border: '1px solid #10b98144', borderRadius: 10 }}>
+                        <div style={{ fontSize: '0.68rem', color: '#10b981' }}>Total Trip Cost:</div>
+                        <strong style={{ color: '#10b981', fontSize: '0.95rem' }}>₹{activeRoute.total_cost_inr?.toLocaleString?.()}</strong>
+                      </div>
+                    </div>
+
+                    {/* Rest Areas & Sleep spots */}
+                    {(() => {
+                      const isNH16 = 
+                        response.card_data.corridor_name?.toLowerCase().includes('nh16') ||
+                        response.card_data.origin?.toLowerCase().includes('guntur') ||
+                        response.card_data.origin?.toLowerCase().includes('srikakulam') ||
+                        response.card_data.origin?.toLowerCase().includes('vijayawada') ||
+                        response.card_data.destination?.toLowerCase().includes('guntur') ||
+                        response.card_data.destination?.toLowerCase().includes('srikakulam') ||
+                        response.card_data.destination?.toLowerCase().includes('vijayawada');
+
+                      const restAreasList = isNH16 
+                        ? [
+                            {
+                              name: "🚚 NH16 Gated Layby (Rajahmundry Bypass)",
+                              desc: "Free 24/7 Secure Truck Parking, Clean Washrooms, Benches, and driver resting quarters."
+                            },
+                            {
+                              name: "⛽ BPCL Highway Oasis (Tuni Comfort Station)",
+                              desc: "Western/Indian toilets, Bathing facilities, CCTV security, and food stalls."
+                            }
+                          ]
+                        : [
+                            {
+                              name: "🚚 NH44 Truck Layby & Rest Oasis (Nagpur Bypass)",
+                              desc: "Free 24/7 Secure Parking, Public Bathrooms, Sleeping Rooms & Bathing Showers."
+                            },
+                            {
+                              name: "⛽ BPCL Highway Oasis (Adilabad Plaza)",
+                              desc: "Clean Restrooms, Driver Rest Quarters, Washrooms, and CCTV Monitored Lorry Parking."
+                            }
+                          ];
+
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#a5b4fc', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            💤 Free Sleep & Bath Rest Areas (For Lorry Drivers):
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {restAreasList.map((area, idx) => (
+                              <div key={idx} style={{ padding: '10px 12px', background: '#141422', borderRadius: 10, fontSize: '0.78rem', border: '1px solid #2d2d48' }}>
+                                <span style={{ fontWeight: 800, color: '#fff' }}>{area.name}</span>
+                                <div style={{ color: '#9ca3af', marginTop: '2px' }}>{area.desc}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Toll Plazas Detailed List */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#f87171', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        🛣️ Toll Plaza Details ({activeTollsCount} Plazas along the Route):
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '150px', overflowY: 'auto', paddingRight: '4px' }}>
+                        {tollPlazasList.slice(0, activeTollsCount).map((toll, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              padding: '8px 12px',
+                              background: '#141422',
+                              borderRadius: 10,
+                              fontSize: '0.78rem',
+                              border: '1px solid #2d2d48',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <div>
+                              <span style={{ fontWeight: 800, color: '#fff' }}>📍 {toll.name}</span>
+                              <div style={{ color: '#9ca3af', fontSize: '0.72rem', marginTop: '1px' }}>{toll.location}</div>
+                            </div>
+                            <span style={{ fontWeight: 800, color: '#f87171' }}>₹{toll.cost_inr}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* FACILITIES LIST CARD */}
               {response.card_type === 'FACILITIES_LIST' && response.card_data && (
@@ -766,17 +1166,20 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
           />
           <button
             type="submit"
+            disabled={loading}
+            onClick={handleManualSubmit}
             style={{
               padding: '12px 20px',
-              background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+              background: loading ? '#4b4b6b' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
               color: '#fff',
               border: 'none',
               borderRadius: 12,
               fontWeight: 800,
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1,
             }}
           >
-            Send ➔
+            {loading ? 'Sending...' : 'Send ➔'}
           </button>
         </form>
       </div>
@@ -787,6 +1190,7 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
         onClose={() => setIsCommOpen(false)}
         contactData={commTarget}
       />
-    </div>
+    </div>,
+    document.body
   )
 }

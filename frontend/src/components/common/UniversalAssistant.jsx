@@ -85,19 +85,47 @@ export default function UniversalAssistant({ placeholder, autoFocus = false, onR
       }
       setIsListening(false)
     } else {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.lang = speechCode
-          recognitionRef.current.start()
-          setIsListening(true)
-        } catch (e) {
-          // If already started, open assistant modal
-          setIsModalOpen(true)
-        }
-      } else {
-        // Fallback open Voice Assistant Modal
-        setIsModalOpen(true)
+      const isSecure = window.location.protocol === 'https:' || 
+                       window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1';
+      
+      if (!isSecure) {
+        setStatusMessage('⚠️ Mic blocked on non-secure (HTTP) origins. Use localhost/HTTPS.');
+        console.error('[UniversalAssistant] Secure origin check failed.');
+        return;
       }
+
+      console.log('[UniversalAssistant] Requesting mic permission via getUserMedia...');
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then((stream) => {
+          console.log('[UniversalAssistant] Mic stream acquired. Releasing temp stream tracks.');
+          stream.getTracks().forEach(track => track.stop());
+
+          if (recognitionRef.current) {
+            try {
+              console.log('[UniversalAssistant] Starting SpeechRecognition...');
+              recognitionRef.current.lang = speechCode
+              recognitionRef.current.start()
+              setIsListening(true)
+            } catch (e) {
+              console.warn('[UniversalAssistant] Start SpeechRecognition failed, opening modal:', e);
+              setIsModalOpen(true)
+            }
+          } else {
+            setIsModalOpen(true)
+          }
+        })
+        .catch((err) => {
+          console.error('[UniversalAssistant] getUserMedia permission check failed:', err);
+          if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+            setStatusMessage('⚠️ Mic permission denied. Enable in browser settings.');
+          } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+            setStatusMessage('⚠️ No microphone found.');
+          } else {
+            setStatusMessage(`⚠️ Mic access error: ${err.message}`);
+          }
+          setIsListening(false);
+        });
     }
   }
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom'
 import Login from './pages/Login'
+import Signup from './pages/Signup'
 import Optimization from './pages/Optimization'
 import MlDashboard from './pages/MlDashboard'
 import LiveTracking from './pages/LiveTracking'
@@ -11,6 +12,7 @@ import AnalyticsDashboard from './pages/AnalyticsDashboard'
 import DriverMode from './pages/DriverMode'
 import RoleHome from './pages/RoleHome'
 import TripPlanner from './pages/TripPlanner'
+import FleetOperatorDashboard from './pages/FleetOperatorDashboard'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import useAuthStore from './store/authStore'
 import { useI18nStore } from './services/i18n'
@@ -26,7 +28,18 @@ function DashboardLayout({ title, roleLabel, children }) {
   const { simpleMode, t } = useI18nStore()
   const [unreadCount, setUnreadCount] = useState(0)
   const [isVoiceOpen, setIsVoiceOpen] = useState(false)
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark')
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light-theme')
+    } else {
+      document.body.classList.remove('light-theme')
+    }
+    localStorage.setItem('theme', theme)
+  }, [theme])
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768)
@@ -54,26 +67,18 @@ function DashboardLayout({ title, roleLabel, children }) {
   const NAV_ITEMS_BY_ROLE = {
     admin: [
       { path: '/home', label: '🏠 Home' },
-      { path: '/operator', label: '🛰️ Optimization' },
-      { path: '/tracking', label: '📍 Live GPS' },
+      { path: '/fleet-operator', label: '🛰️ Fleet Operator' },
       { path: '/incidents', label: '🚨 Incidents' },
       { path: '/return-cargo', label: '🔄 Return Cargo' },
       { path: '/ml', label: '📊 AI/ML' },
       { path: '/what-if', label: '⚡ What-If' },
       { path: '/analytics', label: '📈 Analytics' },
     ],
-    operator: [
+    fleet_operator: [
       { path: '/home', label: '🏠 Home' },
-      { path: '/operator', label: '🛰️ Route Optimization' },
-      { path: '/tracking', label: '📍 Live GPS' },
+      { path: '/fleet-operator', label: '🛰️ Fleet Operator Workspace' },
       { path: '/incidents', label: '🚨 Incidents' },
       { path: '/return-cargo', label: '🔄 Return Cargo' },
-    ],
-    fleet_manager: [
-      { path: '/home', label: '🏠 Home' },
-      { path: '/tracking', label: '📍 GPS Tracking' },
-      { path: '/analytics', label: '📈 Analytics' },
-      { path: '/incidents', label: '🛠️ Incident Recovery' },
     ],
     driver: [
       { path: '/home', label: '🏠 Home' },
@@ -123,34 +128,185 @@ function DashboardLayout({ title, roleLabel, children }) {
           justifyContent: 'space-between',
           alignItems: 'center',
           marginBottom: '24px',
-          borderBottom: '1px solid var(--color-border,#2d2d3d)',
+          borderBottom: '1px solid var(--color-border)',
           paddingBottom: '16px',
-          flexWrap: 'wrap',
           gap: '12px',
           zIndex: 10,
           position: 'relative',
         }}
       >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <img src="/logo.png" alt="Logo" style={{ height: '24px', opacity: 0.9 }} />
-            <Link to="/home" style={{ textDecoration: 'none' }}>
-              <h1 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: '#fff' }}>
-                {t('app_title', 'CARGO PILOT')}
-              </h1>
-            </Link>
-            <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: '#6366f122', color: '#a5b4fc', border: '1px solid #6366f144' }}>
-              {roleLabel}
-            </span>
+        {/* Left Side: Hamburger Menu + Logo & Info */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Hamburger Menu Toggle Button (Left Top Corner) */}
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle Menu"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-text-primary, #fff)',
+              fontSize: '1.8rem',
+              cursor: 'pointer',
+              padding: '4px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'transform 0.2s',
+              transform: isMenuOpen ? 'rotate(90deg)' : 'none',
+            }}
+          >
+            {isMenuOpen ? '✕' : '☰'}
+          </button>
+
+          {/* Logo & Info */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <img src="/logo.png" alt="Logo" style={{ height: '24px', opacity: 0.9 }} />
+              <Link to="/home" style={{ textDecoration: 'none' }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: '800', margin: 0, color: 'var(--color-text-primary, #fff)' }}>
+                  {t('app_title', 'CARGO PILOT')}
+                </h1>
+              </Link>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '2px 8px', borderRadius: 6, background: '#6366f122', color: '#a5b4fc', border: '1px solid #6366f144' }}>
+                {roleLabel}
+              </span>
+            </div>
+            <p className="text-muted" style={{ fontSize: '0.8rem', margin: '4px 0 0', color: 'var(--color-text-secondary, #9ca3af)' }}>
+              {user?.email}
+            </p>
           </div>
-          <p className="text-muted" style={{ fontSize: '0.8rem', margin: '4px 0 0', color: '#9ca3af' }}>
-            {user?.email}
-          </p>
+
+          {/* Hamburger Dropdown Menu (Left-aligned) */}
+          {isMenuOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: '0',
+                background: 'var(--color-bg-secondary, #1e293b)',
+                border: '1px solid var(--color-border, #334155)',
+                borderRadius: 16,
+                padding: '16px',
+                boxShadow: 'var(--shadow-card)',
+                zIndex: 999,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                minWidth: '240px',
+                backdropFilter: 'blur(15px)',
+              }}
+            >
+              {/* Navigation Links */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-purple, #8b5cf6)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '4px', textAlign: 'left' }}>
+                  Navigation
+                </span>
+                {items.map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setIsMenuOpen(false)}
+                    style={{
+                      textDecoration: 'none',
+                      color: 'var(--color-text-primary, #f1f5f9)',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      background: 'var(--color-bg-hover, #2d3748)',
+                      border: '1px solid var(--color-border, #334155)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--color-brand, #3b82f6)'
+                      e.currentTarget.style.color = '#fff'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--color-bg-hover, #2d3748)'
+                      e.currentTarget.style.color = 'var(--color-text-primary, #f1f5f9)'
+                    }}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+
+              {/* Divider */}
+              <div style={{ height: '1px', background: 'var(--color-border, #334155)', margin: '4px 0' }} />
+
+              {/* Settings & Language */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-purple, #8b5cf6)', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'left' }}>
+                  Settings
+                </span>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <LanguageSelector />
+                  <SimpleModeToggle />
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div style={{ height: '1px', background: 'var(--color-border, #334155)', margin: '4px 0' }} />
+
+              {/* Sign Out */}
+              <button
+                onClick={() => {
+                  setIsMenuOpen(false)
+                  logout()
+                }}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontWeight: 800,
+                  fontSize: '0.85rem',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: 'var(--color-danger, #ef4444)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+                }}
+              >
+                {t('sign_out', 'Sign Out')}
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Global Controls & Navigation */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Universal Persistent Voice Button */}
+        {/* Right Side: Global Controls (Speak, Notifications, Theme Mode Toggle) */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {/* Theme Mode Toggle Button (Night Mode / Light Mode) */}
+          <button
+            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+            style={{
+              background: 'var(--color-bg-hover, #2d3748)',
+              border: '1px solid var(--color-border, #334155)',
+              cursor: 'pointer',
+              fontSize: '1.25rem',
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: 'var(--shadow-glow)',
+              transition: 'background var(--transition-fast)',
+            }}
+            title={theme === 'light' ? 'Switch to Night Mode (Dark)' : 'Switch to Day Mode (Light)'}
+          >
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+
+          {/* Universal Persistent Voice Button - Commented out to reduce cockpit clutter */}
+          {/*
           <button
             onClick={() => setIsVoiceOpen(true)}
             style={{
@@ -172,37 +328,14 @@ function DashboardLayout({ title, roleLabel, children }) {
             <span>🎤</span>
             <span>{t('speak', 'Speak')}</span>
           </button>
+          */}
 
-          {/* Language Selector */}
-          <LanguageSelector />
-
-          {/* Simple Mode Toggle */}
-          <SimpleModeToggle />
-
-          {/* Render Header links only if NOT mobile to save screen estate */}
-          {!isMobile && items.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className="btn btn-secondary btn-sm"
-              style={{
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-              }}
-            >
-              {item.label}
-            </Link>
-          ))}
-
+          {/* Unread Notifications Count */}
           {unreadCount > 0 && (
             <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 800, padding: '4px 8px', borderRadius: 12 }}>
               🔔 {unreadCount}
             </span>
           )}
-          <button onClick={logout} className="btn btn-secondary btn-sm" style={{ marginLeft: '4px' }}>
-            {t('sign_out', 'Sign Out')}
-          </button>
         </div>
       </header>
 
@@ -257,7 +390,8 @@ function DashboardLayout({ title, roleLabel, children }) {
         )}
       </div>
 
-      {/* Floating Universal Voice Assistant Trigger at Bottom-Right */}
+      {/* Floating Universal Voice Assistant Trigger at Bottom-Right - Commented out to prevent overlay clutter */}
+      {/*
       <button
         onClick={() => setIsVoiceOpen(true)}
         style={{
@@ -283,6 +417,7 @@ function DashboardLayout({ title, roleLabel, children }) {
       >
         🎤
       </button>
+      */}
 
       {/* Voice Assistant Modal */}
       <VoiceAssistantModal isOpen={isVoiceOpen} onClose={() => setIsVoiceOpen(false)} />
@@ -301,24 +436,25 @@ export default function App() {
 
   const ALL_ROLES = [
     ROLES.ADMIN,
-    ROLES.OPERATOR,
-    ROLES.FLEET_MANAGER,
+    ROLES.FLEET_OPERATOR,
     ROLES.DRIVER,
     ROLES.CUSTOMER,
   ]
 
-  const userRole = user?.role || 'operator'
+  const userRole = user?.role || 'fleet_operator'
   const userRoleLabel = userRole === 'admin' ? 'Administrator'
-    : userRole === 'fleet_manager' ? 'Fleet Manager'
+    : userRole === 'fleet_operator' ? 'Fleet Operator'
     : userRole === 'driver' ? 'Driver'
     : userRole === 'customer' ? 'Enterprise Customer'
-    : 'Logistics Operator'
+    : 'Fleet Operator'
 
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signin" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/register" element={<Signup />} />
         
         {/* Protected Navigation */}
         <Route element={<ProtectedRoute allowedRoles={ALL_ROLES} />}>
@@ -354,17 +490,14 @@ export default function App() {
             </DashboardLayout>
           } />
           
-          <Route path="/operator" element={
-            <DashboardLayout title="Operator Dashboard — Route Solver" roleLabel="Logistics Operator">
-              <Optimization />
+          <Route path="/fleet-operator" element={
+            <DashboardLayout title="Fleet Operator Workspace" roleLabel="Fleet Operator">
+              <FleetOperatorDashboard />
             </DashboardLayout>
           } />
 
-          <Route path="/fleet" element={
-            <DashboardLayout title="Fleet Management — Live Tracking" roleLabel="Fleet Manager">
-              <LiveTracking />
-            </DashboardLayout>
-          } />
+          <Route path="/operator" element={<Navigate to="/fleet-operator" replace />} />
+          <Route path="/fleet" element={<Navigate to="/fleet-operator" replace />} />
 
           <Route path="/tracking" element={
             <DashboardLayout title="Live Fleet Tracking & Telematics" roleLabel={userRoleLabel}>

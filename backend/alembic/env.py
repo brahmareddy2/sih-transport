@@ -26,7 +26,8 @@ if config.config_file_name is not None:
 
 # Override sqlalchemy.url from app settings (reads from .env)
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.effective_database_url)
+db_url = settings.effective_database_url.replace("%", "%%")
+config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = Base.metadata
 

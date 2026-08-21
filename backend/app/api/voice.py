@@ -113,10 +113,62 @@ def transcribe_audio(
     req: TranscribeRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """Transcribe audio or return client-provided fallback text."""
-    text = (req.text_fallback or "").strip()
-    parser = VoiceIntentParser()
-    detected_lang = req.language or parser.detect_language(text)
+    """
+    Transcribe raw WAV audio (Base64) using SpeechRecognition library, or fall back to client text.
+    """
+    audio_len = len(req.audio_base64) if req.audio_base64 else 0
+    logger.info(
+        "[Voice Transcribe] Received request. Audio payload size: %d bytes, Language: %s",
+        audio_len,
+        req.language,
+    )
+
+    text = ""
+    detected_lang = req.language or "en"
+
+    if req.audio_base64:
+        try:
+            import base64
+            import io
+            import speech_recognition as sr
+
+            # Decode base64 bytes
+            audio_data = base64.b64decode(req.audio_base64)
+            audio_file = io.BytesIO(audio_data)
+
+            r = sr.Recognizer()
+            with sr.AudioFile(audio_file) as source:
+                audio = r.record(source)
+
+            # Map simple language codes to standard Google Speech locale codes
+            lang_map = {
+                "en": "en-IN",
+                "te": "te-IN",
+                "hi": "hi-IN",
+                "pa": "pa-IN",
+                "mr": "mr-IN"
+            }
+            lang_code = lang_map.get(req.language, "en-IN")
+
+            logger.info("[Voice Transcribe] Attempting recognize_google with language: %s", lang_code)
+            text = r.recognize_google(audio, language=lang_code)
+            logger.info("[Voice Transcribe] Google transcription result: '%s'", text)
+        except sr.UnknownValueError:
+            logger.warning("[Voice Transcribe] Google Speech Recognition could not understand the audio.")
+            text = ""
+        except sr.RequestError as e:
+            logger.error("[Voice Transcribe] Could not request results from Google service: %s", e)
+            text = ""
+        except Exception as e:
+            logger.error("[Voice Transcribe] Error processing audio transcription: %s", e, exc_info=True)
+            text = ""
+
+    # Fallback to client-provided fallback text if transcription failed but fallback exists
+    if not text and req.text_fallback:
+        text = req.text_fallback.strip()
+        parser = VoiceIntentParser()
+        detected_lang = req.language or parser.detect_language(text)
+        logger.info("[Voice Transcribe] Falling back to client text_fallback: '%s'", text)
 
     return TranscribeResponse(
         text=text,

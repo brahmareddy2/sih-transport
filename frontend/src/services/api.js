@@ -17,6 +17,7 @@ const getSmartApiBaseUrl = () => {
     host.endsWith('.loca.lt') ||
     host.endsWith('.ngrok.io') ||
     host.endsWith('.ngrok-free.app') ||
+    host.endsWith('.lhr.life') ||
     host.includes('tunnel')
   ) {
     return ''

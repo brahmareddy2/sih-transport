@@ -41,8 +41,8 @@ async def lifespan(app: FastAPI):
 
         demo_users = [
             ("admin@logistics.in", "Admin@123!", "admin", "System Administrator"),
-            ("operator@logistics.in", "Operator@123!", "operator", "Logistics Operator"),
-            ("fleet@logistics.in", "Fleet@123!", "fleet_manager", "Fleet Manager"),
+            ("operator@logistics.in", "Operator@123!", "fleet_operator", "Fleet Operator"),
+            ("fleet@logistics.in", "Fleet@123!", "fleet_operator", "Fleet Operator"),
             ("driver@logistics.in", "Driver@123!", "driver", "Lead Driver"),
             ("customer@logistics.in", "Customer@123!", "customer", "Enterprise Customer"),
         ]
@@ -113,6 +113,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.backend_cors_origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "X-Request-ID"],
@@ -144,9 +145,11 @@ app.include_router(auth_router, prefix=API_PREFIX)
 from app.api.vehicles import router as vehicles_router
 from app.api.drivers import router as drivers_router
 from app.api.shipments import router as shipments_router
+from app.api.places import router as places_router
 app.include_router(vehicles_router, prefix=API_PREFIX)
 app.include_router(drivers_router, prefix=API_PREFIX)
 app.include_router(shipments_router, prefix=API_PREFIX)
+app.include_router(places_router, prefix=API_PREFIX)
 
 # Phase 2: Optimization and Seed routers
 from app.api.optimization import router as optimization_router
@@ -189,6 +192,10 @@ app.include_router(assistant_router, prefix=API_PREFIX)
 # Stub router for routes
 from app.api.stubs import routes_router
 app.include_router(routes_router, prefix=API_PREFIX)
+
+# Vehicle Breakdown handling
+from app.api.breakdowns import router as breakdowns_router
+app.include_router(breakdowns_router, prefix=API_PREFIX)
 
 
 # ── Root redirect ─────────────────────────────────────────

@@ -527,7 +527,18 @@ def run_full_seed() -> dict:
     shipments = generate_shipments(500)
     trips, incidents = generate_trips_and_incidents(vehicles, drivers, 300, 80)
 
-    return {
+    import numpy as np
+    def sanitize_numpy(data):
+        if isinstance(data, dict):
+            return {k: sanitize_numpy(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [sanitize_numpy(x) for x in data]
+        elif isinstance(data, np.generic):
+            return data.item()
+        else:
+            return data
+
+    res = {
         "vehicles": vehicles,
         "drivers": drivers,
         "shipments": shipments,
@@ -545,3 +556,4 @@ def run_full_seed() -> dict:
             "available_drivers": sum(1 for d in drivers if d["status"] == "available"),
         },
     }
+    return sanitize_numpy(res)

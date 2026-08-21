@@ -29,16 +29,11 @@ ROLE_ALLOWED_INTENTS: Dict[str, List[str]] = {
         "REPORT_TYRE_PUNCTURE", "FIND_FUEL_STATION", "FIND_RETURN_CARGO", "CHECK_RETURN_TRIP",
         "CHECK_SHIPMENT", "SHOW_DASHBOARD", "SHOW_MY_VEHICLE", "CONTACT_OPERATOR",
     ],
-    "operator": [
+    "fleet_operator": [
         "PLAN_TRIP", "CHECK_TRIP_STATUS", "CHECK_FUEL", "CHECK_ROUTE", "CHECK_ETA",
         "CHECK_TOLL", "CHECK_DISTANCE", "START_TRIP", "PAUSE_TRIP", "REPORT_BREAKDOWN",
         "REPORT_TYRE_PUNCTURE", "FIND_FUEL_STATION", "FIND_RETURN_CARGO", "CHECK_RETURN_TRIP",
         "CHECK_SHIPMENT", "SHOW_DASHBOARD", "SHOW_MY_VEHICLE", "CONTACT_OPERATOR",
-    ],
-    "fleet_manager": [
-        "PLAN_TRIP", "CHECK_TRIP_STATUS", "CHECK_FUEL", "CHECK_ROUTE", "CHECK_ETA",
-        "CHECK_TOLL", "CHECK_DISTANCE", "FIND_FUEL_STATION", "FIND_RETURN_CARGO",
-        "CHECK_RETURN_TRIP", "SHOW_DASHBOARD", "SHOW_MY_VEHICLE", "CONTACT_OPERATOR",
     ],
     "driver": [
         "PLAN_TRIP", "CHECK_TRIP_STATUS", "CHECK_FUEL", "CHECK_ROUTE", "CHECK_ETA",
@@ -93,7 +88,10 @@ class VoiceService:
             }
 
         # 3. RBAC Security Check
-        allowed_intents = ROLE_ALLOWED_INTENTS.get(user_role.lower(), ROLE_ALLOWED_INTENTS["customer"])
+        normalized_role = user_role.lower() if user_role else "customer"
+        if normalized_role in ["operator", "fleet_manager"]:
+            normalized_role = "fleet_operator"
+        allowed_intents = ROLE_ALLOWED_INTENTS.get(normalized_role, ROLE_ALLOWED_INTENTS["customer"])
         if intent_res.intent not in allowed_intents:
             logger.warning("Voice RBAC rejection: Role %s attempted intent %s", user_role, intent_res.intent)
             denied_msg = self.lang_service.translate("unauthorized_command", lang=effective_lang, role=user_role)

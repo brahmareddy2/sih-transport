@@ -226,8 +226,8 @@ def predict_delay_risk(
     explanation = reasons  # return as list for API consumers
 
     result = {
-        "shipment_id": shipment_id,
-        "vehicle_id": vehicle_id,
+        "shipment_id": str(shipment_id) if shipment_id else None,
+        "vehicle_id": str(vehicle_id) if vehicle_id else None,
         "delay_probability": round(prob, 2),
         "predicted_delay_minutes": int(prob * 180),  # scaled average delay
         "risk_level": risk_level,
@@ -270,7 +270,11 @@ def _simulate_route_history(db: Session) -> list[Route]:
     if not vehicles or not drivers:
         from app.services.seed_data.generator import generate_vehicles, generate_drivers
         vehicles = [Vehicle(**v) for v in generate_vehicles(10)]
-        drivers = [Driver(**d) for d in generate_drivers(10)]
+        raw_drivers = generate_drivers(10)
+        drivers = []
+        for d in raw_drivers:
+            d_clean = {k: v for k, v in d.items() if k != "full_name"}
+            drivers.append(Driver(**d_clean))
         for v in vehicles: db.add(v)
         for d in drivers: db.add(d)
         db.commit()

@@ -9,8 +9,8 @@ import api from '../services/api.js'
 
 const DEMO_ACCOUNTS = {
   'admin@logistics.in': { password: 'Admin@123!', role: 'admin', full_name: 'Administrator', email: 'admin@logistics.in', id: 'demo-admin-id' },
-  'operator@logistics.in': { password: 'Operator@123!', role: 'operator', full_name: 'Operations Manager', email: 'operator@logistics.in', id: 'demo-operator-id' },
-  'fleet@logistics.in': { password: 'Fleet@123!', role: 'fleet_manager', full_name: 'Fleet Manager', email: 'fleet@logistics.in', id: 'demo-fleet-id' },
+  'operator@logistics.in': { password: 'Operator@123!', role: 'fleet_operator', full_name: 'Fleet Operator', email: 'operator@logistics.in', id: 'demo-operator-id' },
+  'fleet@logistics.in': { password: 'Fleet@123!', role: 'fleet_operator', full_name: 'Fleet Operator', email: 'fleet@logistics.in', id: 'demo-fleet-id' },
   'driver@logistics.in': { password: 'Driver@123!', role: 'driver', full_name: 'Lead Driver', email: 'driver@logistics.in', id: 'demo-driver-id' },
   'customer@logistics.in': { password: 'Customer@123!', role: 'customer', full_name: 'Enterprise Customer', email: 'customer@logistics.in', id: 'demo-customer-id' },
 }
@@ -46,48 +46,26 @@ const useAuthStore = create((set, get) => ({
       })
       return { success: true, role: data.user.role }
     } catch (err) {
-      // Fallback for Vercel preview or custom credentials
-      const normalizedEmail = (email || '').trim().toLowerCase()
-      const demoAccount = DEMO_ACCOUNTS[normalizedEmail]
-      if (demoAccount) {
-        const fallbackToken = 'demo_session_token_' + demoAccount.role
-        localStorage.setItem('access_token', fallbackToken)
-        localStorage.setItem('demo_user', JSON.stringify(demoAccount))
-        set({
-          user: demoAccount,
-          accessToken: fallbackToken,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null,
-        })
-        return { success: true, role: demoAccount.role }
-      }
-
-      // If custom user email is typed, grant Admin access seamlessly
-      if (email && password) {
-        const displayName = (normalizedEmail.split('@')[0] || 'User')
-          .replace(/[._-]/g, ' ')
-          .replace(/\b\w/g, (c) => c.toUpperCase())
-        const customUser = {
-          id: 'user-' + Date.now(),
-          email: normalizedEmail,
-          full_name: displayName,
-          role: 'admin',
+      // Fallback for Vercel preview or local dev credentials (enabled by default for SIH demo robustness)
+      if (import.meta.env.VITE_ENABLE_DEV_LOGIN === 'true' || true) {
+        const normalizedEmail = (email || '').trim().toLowerCase()
+        const demoAccount = DEMO_ACCOUNTS[normalizedEmail]
+        if (demoAccount) {
+          const fallbackToken = 'demo_session_token_' + demoAccount.role
+          localStorage.setItem('access_token', fallbackToken)
+          localStorage.setItem('demo_user', JSON.stringify(demoAccount))
+          set({
+            user: demoAccount,
+            accessToken: fallbackToken,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          })
+          return { success: true, role: demoAccount.role }
         }
-        const fallbackToken = 'session_token_admin_' + Date.now()
-        localStorage.setItem('access_token', fallbackToken)
-        localStorage.setItem('demo_user', JSON.stringify(customUser))
-        set({
-          user: customUser,
-          accessToken: fallbackToken,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null,
-        })
-        return { success: true, role: 'admin' }
       }
 
-      let message = err.response?.data?.detail || 'Please enter an email and password or click a role button above.'
+      let message = err.response?.data?.detail || 'Please enter a valid email and password.'
       set({ isLoading: false, error: message, isAuthenticated: false })
       return { success: false, error: message }
     }

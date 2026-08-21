@@ -36,7 +36,7 @@ HIGHWAY_CONTACTS: Dict[str, Dict[str, Any]] = {
     "fleet_manager": {
         "id": "cont-fleet-1",
         "name": "Central Fleet Control Room",
-        "category": "fleet_manager",
+        "category": "fleet_operator",
         "phone_masked": "+91 80XXX X1001",
         "phone_display": "+91 80456 71001",
         "location": "Cargo Pilot Operations Hub",
@@ -46,7 +46,7 @@ HIGHWAY_CONTACTS: Dict[str, Dict[str, Any]] = {
     "operator_support": {
         "id": "cont-op-1",
         "name": "Logistics Dispatch & Emergency Desk",
-        "category": "operator",
+        "category": "fleet_operator",
         "phone_masked": "+91 80XXX X9999",
         "phone_display": "+91 80456 79999",
         "location": "Cargo Pilot Support Center",

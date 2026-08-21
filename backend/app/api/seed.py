@@ -78,10 +78,28 @@ def generate_seed_data(
     if payload.overwrite:
         logger.info("Clearing existing seed data before regeneration")
         try:
-            # Delete in dependency order
+            # Delete in dependency order (including dependent tracking/analytics/recovery tables)
+            from app.models.incident import RecoveryPlan
+            from app.models.return_cargo import ReturnCargoMatch
+            from app.models.route import RouteStop
+            from app.models.shipment import ShipmentGroupMember, ShipmentConsolidationGroup
+            from app.models.analytics import VehicleLocationHistory, MaintenanceRecord, DemandForecast
+            from app.models.notification import Notification
+
+            db.query(RecoveryPlan).delete()
             db.query(Incident).delete()
-            db.query(Route).delete()
+            db.query(ReturnCargoMatch).delete()
+            db.query(ShipmentGroupMember).delete()
+            db.query(ShipmentConsolidationGroup).delete()
+            from app.models.breakdown import VehicleBreakdown
+            db.query(VehicleBreakdown).delete()
+            db.query(RouteStop).delete()
+            db.query(Notification).delete()
+            db.query(VehicleLocationHistory).delete()
+            db.query(MaintenanceRecord).delete()
+            db.query(DemandForecast).delete()
             db.query(Shipment).delete()
+            db.query(Route).delete()
             db.query(Driver).filter(Driver.employee_id.like("DRV-%")).delete(synchronize_session=False)
             db.query(Vehicle).delete()
             db.commit()
@@ -98,7 +116,11 @@ def generate_seed_data(
     # Insert vehicles
     logger.info("Inserting %d vehicles...", len(data["vehicles"]))
     try:
-        for v in data["vehicles"]:
+        demo_operators = db.query(User).filter(User.email.in_(["operator@logistics.in", "fleet@logistics.in"])).all()
+        op_ids = [op.id for op in op_operators] if 'op_operators' in locals() else [op.id for op in demo_operators]
+        
+        for idx, v in enumerate(data["vehicles"]):
+            op_id = op_ids[idx % len(op_ids)] if op_ids else None
             vehicle = Vehicle(
                 registration_number=v["registration_number"],
                 vehicle_type=v["vehicle_type"],
@@ -123,6 +145,8 @@ def generate_seed_data(
                 is_refrigerated=v["is_refrigerated"],
                 can_carry_hazmat=v["can_carry_hazmat"],
                 home_depot_city=v["home_depot_city"],
+                operator_id=op_id,
+                current_load_kg=0.0,
             )
             db.add(vehicle)
         db.commit()
@@ -228,6 +252,76 @@ def generate_seed_data(
             db.add(route)
         db.commit()
         logger.info("Trips committed")
+
+        # Link shipments to routes and create RouteStops
+        db_routes = db.query(Route).all()
+        db_shipments = db.query(Shipment).all()
+        from app.models.route import RouteStop
+        import random
+        random.seed(42)
+        
+        # Shuffle shipments
+        random.shuffle(db_shipments)
+        shipment_idx = 0
+        
+        for route in db_routes:
+            # Assign 1-2 shipments to each route
+            num_consignments = random.randint(1, 2)
+            route_load = 0.0
+            
+            for _ in range(num_consignments):
+                if shipment_idx >= len(db_shipments):
+                    break
+                shp = db_shipments[shipment_idx]
+                shipment_idx += 1
+                
+                # Link shipment
+                shp.assigned_route_id = route.id
+                shp.assigned_vehicle_id = route.vehicle_id
+                shp.assigned_driver_id = route.driver_id
+                
+                # Align status
+                if route.status == "in_progress":
+                    shp.status = "in_transit"
+                    route_load += float(shp.weight_kg)
+                elif route.status == "completed":
+                    shp.status = "delivered"
+                
+                # Create RouteStops
+                pickup_stop = RouteStop(
+                    route_id=route.id,
+                    shipment_id=shp.id,
+                    stop_sequence=0,
+                    stop_type="pickup",
+                    city=shp.origin_city,
+                    address=shp.origin_address,
+                    lat=shp.origin_lat,
+                    lon=shp.origin_lon,
+                    status="completed" if route.status == "completed" else "arrived"
+                )
+                delivery_stop = RouteStop(
+                    route_id=route.id,
+                    shipment_id=shp.id,
+                    stop_sequence=1,
+                    stop_type="delivery",
+                    city=shp.destination_city,
+                    address=shp.destination_address,
+                    lat=shp.destination_lat,
+                    lon=shp.destination_lon,
+                    status="completed" if route.status == "completed" else "pending"
+                )
+                db.add(pickup_stop)
+                db.add(delivery_stop)
+            
+            # Update vehicle load
+            if route.status == "in_progress" and route.vehicle_id:
+                veh = db.query(Vehicle).filter(Vehicle.id == route.vehicle_id).first()
+                if veh:
+                    veh.current_load_kg = route_load
+                    veh.status = "in_transit"
+                    
+        db.commit()
+        logger.info("Shipment-Route linkages and RouteStops committed")
     except Exception as e:
         db.rollback()
         logger.warning("Failed to insert trips (non-fatal): %s", e)

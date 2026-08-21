@@ -5,8 +5,7 @@
 // ── User Roles ───────────────────────────────────────────
 export const ROLES = {
   ADMIN: 'admin',
-  OPERATOR: 'operator',
-  FLEET_MANAGER: 'fleet_manager',
+  FLEET_OPERATOR: 'fleet_operator',
   DRIVER: 'driver',
   CUSTOMER: 'customer',
 }
@@ -14,8 +13,7 @@ export const ROLES = {
 // ── Role display labels ───────────────────────────────────
 export const ROLE_LABELS = {
   admin: 'Administrator',
-  operator: 'Logistics Operator',
-  fleet_manager: 'Fleet Manager',
+  fleet_operator: 'Fleet Operator',
   driver: 'Driver',
   customer: 'Customer',
 }
@@ -23,8 +21,7 @@ export const ROLE_LABELS = {
 // ── Role colors ───────────────────────────────────────────
 export const ROLE_COLORS = {
   admin: '#8b5cf6',
-  operator: '#3b82f6',
-  fleet_manager: '#06b6d4',
+  fleet_operator: '#06b6d4',
   driver: '#10b981',
   customer: '#f59e0b',
 }
@@ -32,8 +29,7 @@ export const ROLE_COLORS = {
 // ── Route paths by role ───────────────────────────────────
 export const ROLE_HOME_PATH = {
   admin: '/admin',
-  operator: '/operator',
-  fleet_manager: '/fleet',
+  fleet_operator: '/fleet-operator',
   driver: '/driver-mode',
   customer: '/customer',
 }

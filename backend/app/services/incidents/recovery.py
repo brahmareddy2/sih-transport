@@ -743,7 +743,7 @@ def _create_recovery_notifications(
         inc_type_label = incident.incident_type.replace("_", " ").title()
 
         # Operator notification
-        operators = db.query(User).filter(User.role.in_(["admin", "operator"])).all()
+        operators = db.query(User).filter(User.role.in_(["admin", "fleet_operator"])).all()
         for op in operators:
             db.add(Notification(
                 user_id=op.id,
@@ -935,7 +935,7 @@ def simulate_incident(
 
     # Send operator alert
     try:
-        operators = db.query(User).filter(User.role.in_(["admin", "operator"])).all()
+        operators = db.query(User).filter(User.role.in_(["admin", "fleet_operator"])).all()
         inc_label = incident_type.replace("_", " ").title()
         for op in operators:
             db.add(Notification(

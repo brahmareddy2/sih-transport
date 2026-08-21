@@ -48,6 +48,21 @@ class SignupRequest(BaseModel):
     organization_name: str | None = None
     role: str = "driver"
 
+    # Driver Profile fields
+    license_number: str | None = None
+    license_type: str | None = None
+    license_expiry: str | None = None
+    assigned_vehicle_id: UUID | None = None
+
+    # Fleet Manager Profile fields
+    managed_fleet_size: int | None = None
+    region: str | None = None
+
+    # Enterprise Customer Profile fields
+    company_name: str | None = None
+    gst_number: str | None = None
+    billing_address: str | None = None
+
 
 class ChangePasswordRequest(BaseModel):
     current_password: str

@@ -54,6 +54,20 @@ def test_signup_role_rules():
     assert admin_db is not None
     assert admin_db.is_active is False
     assert admin_db.is_approved is False
+
+    # 3. Duplicate email registration check: should return 409 Conflict
+    response_dup = client.post("/api/v1/auth/signup", json={
+        "full_name": "Test Driver Duplicate",
+        "email": "driver_test@cargo.com",
+        "password": "Password123!",
+        "phone": "+919999988888",
+        "preferred_language": "te",
+        "organization_name": "Cargo Test Ltd",
+        "role": "driver"
+    })
+    assert response_dup.status_code == 409
+    assert response_dup.json()["detail"] == "Email is already registered"
+
     db.close()
 
 
