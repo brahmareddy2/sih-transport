@@ -465,81 +465,83 @@ export default function App() {
             </DashboardLayout>
           } />
 
-          <Route path="/driver-mode" element={
-            <DashboardLayout title="Driver Cockpit — Simple Mode" roleLabel="Lead Driver">
-              <DriverMode />
-            </DashboardLayout>
-          } />
-
-          <Route path="/driver" element={
-            <DashboardLayout title="Driver Cockpit — Simple Mode" roleLabel="Lead Driver">
-              <DriverMode />
-            </DashboardLayout>
-          } />
-
-          <Route path="/trip-planner" element={
-            <DashboardLayout title="Interactive Multimodal Trip Planner" roleLabel={userRoleLabel}>
-              <TripPlanner />
-            </DashboardLayout>
-          } />
-
-          {/* Phase 1–7 Routes */}
-          <Route path="/admin" element={
-            <DashboardLayout title="Admin Console — Fleet Optimization" roleLabel="Administrator">
-              <Optimization />
-            </DashboardLayout>
-          } />
+          {/* Admin Only */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
+            <Route path="/admin" element={
+              <DashboardLayout title="Admin Console — Fleet Optimization" roleLabel="Administrator">
+                <Optimization />
+              </DashboardLayout>
+            } />
+          </Route>
           
-          <Route path="/fleet-operator" element={
-            <DashboardLayout title="Fleet Operator Workspace" roleLabel="Fleet Operator">
-              <FleetOperatorDashboard />
-            </DashboardLayout>
-          } />
+          {/* Fleet Operator & Admin */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.FLEET_OPERATOR]} />}>
+            <Route path="/fleet-operator" element={
+              <DashboardLayout title="Fleet Operator Workspace" roleLabel="Fleet Operator">
+                <FleetOperatorDashboard />
+              </DashboardLayout>
+            } />
+            <Route path="/operator" element={<Navigate to="/fleet-operator" replace />} />
+            <Route path="/fleet" element={<Navigate to="/fleet-operator" replace />} />
+            <Route path="/tracking" element={
+              <DashboardLayout title="Live Fleet Tracking & Telematics" roleLabel={userRoleLabel}>
+                <LiveTracking />
+              </DashboardLayout>
+            } />
+            <Route path="/incidents" element={
+              <DashboardLayout title="Incident Management & Recovery" roleLabel={userRoleLabel}>
+                <IncidentManagement />
+              </DashboardLayout>
+            } />
+            <Route path="/return-cargo" element={
+              <DashboardLayout title="Return Cargo & Empty-KM Reduction" roleLabel={userRoleLabel}>
+                <ReturnCargo />
+              </DashboardLayout>
+            } />
+            <Route path="/what-if" element={
+              <DashboardLayout title="What-If Contingency Simulator" roleLabel={userRoleLabel}>
+                <WhatIfSimulator />
+              </DashboardLayout>
+            } />
+            <Route path="/ml" element={
+              <DashboardLayout title="AI/ML Intelligence & Predictions" roleLabel={userRoleLabel}>
+                <MlDashboard />
+              </DashboardLayout>
+            } />
+          </Route>
 
-          <Route path="/operator" element={<Navigate to="/fleet-operator" replace />} />
-          <Route path="/fleet" element={<Navigate to="/fleet-operator" replace />} />
+          {/* Driver & Admin */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DRIVER]} />}>
+            <Route path="/driver-mode" element={
+              <DashboardLayout title="Driver Cockpit — Simple Mode" roleLabel="Lead Driver">
+                <DriverMode />
+              </DashboardLayout>
+            } />
+            <Route path="/driver" element={
+              <DashboardLayout title="Driver Cockpit — Simple Mode" roleLabel="Lead Driver">
+                <DriverMode />
+              </DashboardLayout>
+            } />
+            <Route path="/trip-planner" element={
+              <DashboardLayout title="Interactive Multimodal Trip Planner" roleLabel={userRoleLabel}>
+                <TripPlanner />
+              </DashboardLayout>
+            } />
+          </Route>
 
-          <Route path="/tracking" element={
-            <DashboardLayout title="Live Fleet Tracking & Telematics" roleLabel={userRoleLabel}>
-              <LiveTracking />
-            </DashboardLayout>
-          } />
-
-          <Route path="/customer" element={
-            <DashboardLayout title="Customer Portal — Consignment Analytics" roleLabel="Customer">
-              <AnalyticsDashboard />
-            </DashboardLayout>
-          } />
-
-          <Route path="/ml" element={
-            <DashboardLayout title="AI/ML Intelligence & Predictions" roleLabel={userRoleLabel}>
-              <MlDashboard />
-            </DashboardLayout>
-          } />
-
-          <Route path="/incidents" element={
-            <DashboardLayout title="Incident Management & Recovery" roleLabel={userRoleLabel}>
-              <IncidentManagement />
-            </DashboardLayout>
-          } />
-
-          <Route path="/return-cargo" element={
-            <DashboardLayout title="Return Cargo & Empty-KM Reduction" roleLabel={userRoleLabel}>
-              <ReturnCargo />
-            </DashboardLayout>
-          } />
-
-          <Route path="/what-if" element={
-            <DashboardLayout title="What-If Contingency Simulator" roleLabel={userRoleLabel}>
-              <WhatIfSimulator />
-            </DashboardLayout>
-          } />
-
-          <Route path="/analytics" element={
-            <DashboardLayout title="Enterprise Analytics & Performance" roleLabel={userRoleLabel}>
-              <AnalyticsDashboard />
-            </DashboardLayout>
-          } />
+          {/* Customer & Admin */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.CUSTOMER]} />}>
+            <Route path="/customer" element={
+              <DashboardLayout title="Customer Portal — Consignment Analytics" roleLabel="Customer">
+                <AnalyticsDashboard />
+              </DashboardLayout>
+            } />
+            <Route path="/analytics" element={
+              <DashboardLayout title="Enterprise Analytics & Performance" roleLabel={userRoleLabel}>
+                <AnalyticsDashboard />
+              </DashboardLayout>
+            } />
+          </Route>
         </Route>
 
         <Route path="/" element={<Navigate to="/home" replace />} />

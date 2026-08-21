@@ -47,7 +47,7 @@ def list_drivers(
 
 @router.get("/available", summary="List available drivers")
 def list_available_drivers(
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator", "operator", "fleet_manager")),
     db: Session = Depends(get_db),
 ):
     drivers = db.query(Driver).filter(Driver.status == "available").all()

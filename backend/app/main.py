@@ -178,10 +178,12 @@ from app.api.what_if import router as what_if_router
 from app.api.analytics import router as analytics_router
 from app.api.notifications import router as notifications_router
 from app.api.admin import router as admin_router
+from app.api.financials import router as financials_router
 app.include_router(what_if_router, prefix=API_PREFIX)
 app.include_router(analytics_router, prefix=API_PREFIX)
 app.include_router(notifications_router, prefix=API_PREFIX)
 app.include_router(admin_router, prefix=API_PREFIX)
+app.include_router(financials_router, prefix=API_PREFIX)
 
 # Phase 8: Universal Voice-First + Simple Mode User Experience
 from app.api.voice import router as voice_router

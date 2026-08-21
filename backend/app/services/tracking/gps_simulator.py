@@ -433,6 +433,65 @@ def _check_customer_arrival_alert(db: Session, state: dict):
         db.rollback()
         logger.error("Failed checking/sending customer arrival notification: %s", e)
 
+
+def _check_operator_eta_threshold_alerts(db: Session, state: dict):
+    try:
+        from app.models.route import Route
+        from app.models.notification import Notification
+        from app.models.user import User
+
+        trip_id = state["current_trip_id"] or state.get("trip_id")
+        eta_minutes = state["eta_minutes"]
+        if not trip_id or eta_minutes <= 0:
+            return
+
+        t_uuid = uuid.UUID(trip_id) if isinstance(trip_id, str) else trip_id
+        route = db.query(Route).filter(Route.id == t_uuid).first()
+        if not route:
+            return
+
+        # Determine threshold level
+        threshold = None
+        # Proximity checks (+/- 5 mins around thresholds)
+        if 235 <= eta_minutes <= 245:
+            threshold = 4
+        elif 175 <= eta_minutes <= 185:
+            threshold = 3
+        elif 115 <= eta_minutes <= 125:
+            threshold = 2
+        elif 55 <= eta_minutes <= 65:
+            threshold = 1
+
+        if not threshold:
+            return
+
+        # Find all fleet operators
+        operators = db.query(User).filter(User.role == "fleet_operator").all()
+        for op in operators:
+            # Check for existing alert for this operator, trip, and threshold
+            unique_marker = f"Trip {route.route_number} has {threshold}h remaining"
+            recent_alert = db.query(Notification).filter(
+                Notification.user_id == op.id,
+                Notification.notification_type == "operator_eta_alert",
+                Notification.message.like(f"%{unique_marker}%")
+            ).first()
+
+            if not recent_alert:
+                alert = Notification(
+                    user_id=op.id,
+                    notification_type="operator_eta_alert",
+                    title=f"⚠️ ETA Alert: {route.route_number} ({threshold}h Left)",
+                    message=f"Vehicle {state.get('registration_number')} on Trip {route.route_number} has {threshold}h remaining until arrival. Current ETA is {eta_minutes} minutes.",
+                    is_read=False,
+                    created_at=datetime.now(timezone.utc)
+                )
+                db.add(alert)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error("Failed checking/sending operator ETA alerts: %s", e)
+
+
 # Simulation loop ticking
 async def broadcast_fleet_update():
     if not ACTIVE_CONNECTIONS:
@@ -584,6 +643,7 @@ async def tick_simulations():
                 _write_history_and_update_vehicle_in_db(db, vehicle_id, state)
             if state["tick_count"] % 10 == 0:
                 _check_customer_arrival_alert(db, state)
+                _check_operator_eta_threshold_alerts(db, state)
 
             updated = True
 

@@ -50,7 +50,7 @@ def list_vehicles(
 
 @router.get("/available", summary="List available vehicles")
 def list_available_vehicles(
-    current_user: User = Depends(require_roles("admin", "operator", "fleet_manager")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator", "operator", "fleet_manager")),
     db: Session = Depends(get_db),
 ):
     vehicles = db.query(Vehicle).filter(Vehicle.status == "available").all()

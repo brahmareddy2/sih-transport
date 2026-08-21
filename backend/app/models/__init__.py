@@ -22,6 +22,7 @@ from app.models.prediction import ModelPrediction
 from app.models.return_cargo import ReturnCargoMatch
 from app.models.assistant_session import AssistantSession, AssistantMessage
 from app.models.breakdown import VehicleBreakdown
+from app.models.trip_cost import TripCost
 
 __all__ = [
     "User",
@@ -49,4 +50,5 @@ __all__ = [
     "AssistantSession",
     "AssistantMessage",
     "VehicleBreakdown",
+    "TripCost",
 ]

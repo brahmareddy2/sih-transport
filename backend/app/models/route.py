@@ -89,6 +89,7 @@ class Route(Base):
         "Shipment", foreign_keys="Shipment.assigned_route_id", back_populates="route"
     )
     incidents: Mapped[list["Incident"]] = relationship("Incident", back_populates="route")
+    trip_cost: Mapped["TripCost"] = relationship("TripCost", back_populates="route", uselist=False, cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<Route {self.route_number} {self.origin_city}→{self.destination_city} status={self.status}>"

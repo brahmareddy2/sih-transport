@@ -68,7 +68,7 @@ def list_shipments(
 @router.post("", status_code=201, summary="Create new shipment")
 def create_shipment(
     payload: dict,
-    current_user: User = Depends(require_roles("admin", "operator", "customer")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator", "customer")),
     db: Session = Depends(get_db),
 ):
     required = ["origin_city", "origin_address", "origin_lat", "origin_lon",
@@ -103,12 +103,39 @@ def create_shipment(
     db.commit()
     db.refresh(shipment)
     logger.info("Shipment created: %s by user %s", shipment.shipment_number, current_user.id)
+
+    # Trigger notifications to Fleet Operators with at least one empty vehicle
+    try:
+        from app.models.notification import Notification
+        from app.models.vehicle import Vehicle
+        operators = db.query(User).filter(User.role == "fleet_operator").all()
+        for op in operators:
+            # Check if operator has an empty vehicle (status available or idle)
+            empty_vehicle = db.query(Vehicle).filter(
+                Vehicle.operator_id == op.id,
+                Vehicle.status.in_(["available", "idle"])
+            ).first()
+            
+            if empty_vehicle:
+                notif = Notification(
+                    user_id=op.id,
+                    notification_type="incident_alert",
+                    title=f"📦 New Order Booked: {shipment.shipment_number}",
+                    message=f"A new shipment order {shipment.shipment_number} ({shipment.goods_type or 'General Cargo'}, {shipment.weight_kg}kg) has been booked from {shipment.origin_city} to {shipment.destination_city}. You have idle vehicle {empty_vehicle.registration_number} available for assignment.",
+                    is_read=False,
+                    created_at=datetime.now(timezone.utc),
+                )
+                db.add(notif)
+        db.commit()
+    except Exception as notif_err:
+        logger.error("Failed sending operator notifications: %s", notif_err)
+
     return _shipment_to_dict(shipment)
 
 
 @router.get("/pending", summary="List unassigned pending shipments")
 def list_pending_shipments(
-    current_user: User = Depends(require_roles("admin", "operator")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator", "operator")),
     db: Session = Depends(get_db),
 ):
     shipments = db.query(Shipment).filter(Shipment.status == "pending").order_by(
@@ -135,7 +162,7 @@ def get_shipment(
 @router.delete("/{shipment_id}", summary="Cancel a shipment")
 def cancel_shipment(
     shipment_id: UUID,
-    current_user: User = Depends(require_roles("admin", "operator")),
+    current_user: User = Depends(require_roles("admin", "fleet_operator", "operator")),
     db: Session = Depends(get_db),
 ):
     shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
@@ -174,3 +201,115 @@ def _shipment_to_dict(s: Shipment) -> dict:
         "created_at": s.created_at.isoformat(),
         "updated_at": s.updated_at.isoformat(),
     }
+
+
+from pydantic import BaseModel
+class AssignShipmentPayload(BaseModel):
+    vehicle_id: UUID
+    driver_id: UUID
+
+
+@router.post("/{shipment_id}/assign", summary="Manually assign empty vehicle and driver to a shipment (confirm order)")
+def assign_shipment_to_vehicle(
+    shipment_id: UUID,
+    payload: AssignShipmentPayload,
+    current_user: User = Depends(require_roles("admin", "fleet_operator")),
+    db: Session = Depends(get_db)
+):
+    from app.models.vehicle import Vehicle
+    from app.models.driver import Driver
+    from app.models.route import Route, RouteStop
+    
+    # 1. Fetch shipment
+    shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
+    if not shipment:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+        
+    if shipment.status != "pending":
+        raise HTTPException(status_code=400, detail=f"Shipment is already {shipment.status}")
+
+    # 2. Fetch vehicle & driver
+    vehicle = db.query(Vehicle).filter(Vehicle.id == payload.vehicle_id).first()
+    driver = db.query(Driver).filter(Driver.id == payload.driver_id).first()
+    
+    if not vehicle:
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+
+    # Enforce vehicle is empty (load == 0 or status == available)
+    active_routes = db.query(Route).filter(
+        Route.vehicle_id == vehicle.id,
+        Route.status.in_(["planned", "in_progress"])
+    ).all()
+    if len(active_routes) > 0 or float(vehicle.current_load_kg) > 0 or vehicle.status not in ["available", "idle"]:
+        raise HTTPException(status_code=400, detail="Vehicle is not empty or is already assigned to a trip")
+
+    # 3. Create a Route (trip)
+    import uuid
+    route_id = uuid.uuid4()
+    route_number = f"RT-{datetime.now(timezone.utc).year}-{db.query(Route).count() + 1:05d}"
+    
+    route = Route(
+        id=route_id,
+        route_number=route_number,
+        vehicle_id=vehicle.id,
+        driver_id=driver.id,
+        origin_city=shipment.origin_city,
+        destination_city=shipment.destination_city,
+        planned_start_time=datetime.now(timezone.utc),
+        status="in_progress",
+    )
+    db.add(route)
+
+    # 4. Create stops
+    pickup_stop = RouteStop(
+        route_id=route_id,
+        shipment_id=shipment.id,
+        stop_sequence=0,
+        stop_type="pickup",
+        city=shipment.origin_city,
+        address=shipment.origin_address,
+        lat=shipment.origin_lat,
+        lon=shipment.origin_lon,
+        status="completed",
+        actual_arrival=datetime.now(timezone.utc),
+        actual_departure=datetime.now(timezone.utc),
+    )
+    delivery_stop = RouteStop(
+        route_id=route_id,
+        shipment_id=shipment.id,
+        stop_sequence=1,
+        stop_type="delivery",
+        city=shipment.destination_city,
+        address=shipment.destination_address,
+        lat=shipment.destination_lat,
+        lon=shipment.destination_lon,
+        status="pending",
+    )
+    db.add(pickup_stop)
+    db.add(delivery_stop)
+
+    # 5. Update vehicle & shipment state
+    vehicle.status = "in_transit"
+    vehicle.current_load_kg = shipment.weight_kg
+    
+    shipment.assigned_vehicle_id = vehicle.id
+    shipment.assigned_driver_id = driver.id
+    shipment.assigned_route_id = route_id
+    shipment.status = "in_transit"
+    
+    # 6. Notify driver
+    from app.models.notification import Notification
+    driver_notif = Notification(
+        user_id=driver.user_id,
+        notification_type="route_update",
+        title=f"📋 New Trip Assigned: {route_number}",
+        message=f"You have been assigned to trip {route_number} transporting {shipment.goods_type or 'General Cargo'} ({shipment.weight_kg}kg) from {shipment.origin_city} to {shipment.destination_city}.",
+        is_read=False,
+        created_at=datetime.now(timezone.utc),
+    )
+    db.add(driver_notif)
+
+    db.commit()
+    return {"message": "Shipment assigned successfully", "route_id": str(route_id), "route_number": route_number}

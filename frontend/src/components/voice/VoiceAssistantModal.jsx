@@ -75,6 +75,9 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
   const [mapProgress, setMapProgress] = useState(0)
 
   const recognitionRef = useRef(null)
+  const mediaRecorderRef = useRef(null)
+  const mediaStreamRef = useRef(null)
+  const audioChunksRef = useRef([])
 
   // Get active speech code
   const currentLangObj = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0]
@@ -155,6 +158,12 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
         try {
           recognitionRef.current.abort()
         } catch {}
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try { mediaRecorderRef.current.stop(); } catch {}
+      }
+      if (mediaStreamRef.current) {
+        try { mediaStreamRef.current.getTracks().forEach(track => track.stop()); } catch {}
       }
     }
   }, [speechCode])
@@ -242,10 +251,10 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
       .then((stream) => {
         console.log('[Voice Assistant] Microphone stream acquired successfully. Permission granted.');
         
-        // Stop the temp stream tracks immediately to release device for SpeechRecognition
-        stream.getTracks().forEach(track => track.stop());
-
         if (recognitionRef.current) {
+          // Stop the temp stream tracks immediately to release device for SpeechRecognition
+          stream.getTracks().forEach(track => track.stop());
+
           try {
             console.log('[Voice Assistant] Starting SpeechRecognition instance...');
             recognitionRef.current.lang = speechCode
@@ -267,7 +276,76 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
             }
           }
         } else {
-          setErrorMessage('Speech recognition is not supported in this browser. Please type your query.')
+          // Server-side MediaRecorder fallback for Firefox/Safari
+          console.log('[Voice Assistant] SpeechRecognition not supported. Using MediaRecorder fallback...');
+          mediaStreamRef.current = stream;
+          audioChunksRef.current = [];
+          
+          let mediaRecorder;
+          try {
+            mediaRecorder = new MediaRecorder(stream);
+          } catch (err) {
+            console.error('[Voice Assistant] MediaRecorder instantiation failed:', err);
+            setErrorMessage('⚠️ Audio recording is not supported in this browser.');
+            stream.getTracks().forEach(track => track.stop());
+            setIsListening(false);
+            return;
+          }
+
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) {
+              audioChunksRef.current.push(event.data);
+            }
+          };
+
+          mediaRecorder.onstop = async () => {
+            console.log('[Voice Assistant] MediaRecorder stopped. Processing audio chunks...');
+            const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType || 'audio/webm' });
+            setLoading(true);
+            try {
+              let finalWavBlob = audioBlob;
+              try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const arrayBuf = await audioBlob.arrayBuffer();
+                const audioBuf = await audioContext.decodeAudioData(arrayBuf);
+                finalWavBlob = bufferToWav(audioBuf);
+                console.log('[Voice Assistant] Audio successfully decoded and converted to WAV.');
+              } catch (decErr) {
+                console.warn('[Voice Assistant] Audio Context decode failed, using raw recorded blob:', decErr);
+              }
+
+              const reader = new FileReader();
+              reader.readAsDataURL(finalWavBlob);
+              reader.onloadend = async () => {
+                const base64Data = reader.result.split(',')[1];
+                try {
+                  console.log('[Voice Assistant] Sending audio base64 payload to backend transcribe...');
+                  const transRes = await transcribeAudio(base64Data, language);
+                  console.log('[Voice Assistant] Transcription response:', transRes);
+                  if (transRes && transRes.text) {
+                    setTranscript(transRes.text);
+                    handleCommand(transRes.text, false);
+                  } else {
+                    setErrorMessage('⚠️ Could not transcribe speech. Try speaking louder or typing.');
+                  }
+                } catch (apiErr) {
+                  console.error('[Voice Assistant] Transcription API failed:', apiErr);
+                  setErrorMessage('⚠️ Speech transcription failed server-side.');
+                } finally {
+                  setLoading(false);
+                }
+              };
+            } catch (err) {
+              console.error('[Voice Assistant] Error handling recorded audio:', err);
+              setErrorMessage('⚠️ Error processing voice recording.');
+              setLoading(false);
+            }
+          };
+
+          mediaRecorderRef.current = mediaRecorder;
+          mediaRecorder.start(200); // slice chunks every 200ms
+          setIsListening(true);
+          setErrorMessage('');
         }
       })
       .catch((err) => {
@@ -292,6 +370,26 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
         console.warn('[Voice Assistant] Error calling SpeechRecognition.stop:', e);
       }
     }
+    
+    // Stop MediaRecorder if active
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {
+        console.warn('[Voice Assistant] Error stopping MediaRecorder:', e);
+      }
+    }
+    
+    // Stop media stream tracks
+    if (mediaStreamRef.current) {
+      try {
+        mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      } catch (e) {
+        console.warn('[Voice Assistant] Error stopping media stream tracks:', e);
+      }
+      mediaStreamRef.current = null;
+    }
+    
     setIsListening(false)
   }
 
@@ -738,6 +836,112 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
                   ? response.card_data.toll_plazas.length
                   : (activeRoute.id === 'best_route' ? 6 : activeRoute.id === 'fastest_route' ? 7 : 3);
 
+                const originName = response.card_data.origin || 'Origin';
+                const destName = response.card_data.destination || 'Destination';
+                const isVijayawadaToVizag = 
+                  (originName.toLowerCase().includes('vijayawada') && (destName.toLowerCase().includes('visakhapatnam') || destName.toLowerCase().includes('vizag'))) ||
+                  ((originName.toLowerCase().includes('visakhapatnam') || originName.toLowerCase().includes('vizag')) && destName.toLowerCase().includes('vijayawada'));
+                const isMumbaiPune = 
+                  (originName.toLowerCase().includes('mumbai') && destName.toLowerCase().includes('pune')) ||
+                  (originName.toLowerCase().includes('pune') && destName.toLowerCase().includes('mumbai'));
+                const isDelhiHyd = 
+                  (originName.toLowerCase().includes('delhi') && destName.toLowerCase().includes('hyderabad')) ||
+                  (originName.toLowerCase().includes('hyderabad') && destName.toLowerCase().includes('delhi'));
+
+                let tollPlazasList = [];
+                
+                if (selectedRouteId === 'best_route') {
+                  if (response.card_data.toll_plazas && response.card_data.toll_plazas.length > 0) {
+                    tollPlazasList = response.card_data.toll_plazas;
+                  } else if (isVijayawadaToVizag) {
+                    tollPlazasList = [
+                      {"name": "Kalaparru Toll Plaza", "location": "NH-16 Section", "cost_inr": 120},
+                      {"name": "Veeravalli Toll Plaza", "location": "NH-16 Section", "cost_inr": 110},
+                      {"name": "Kovvuru Toll Plaza", "location": "Godavari Fourth Bridge", "cost_inr": 100},
+                      {"name": "Krishnavaram Toll Plaza", "location": "NH-16 Section", "cost_inr": 120},
+                      {"name": "Vempadu Toll Plaza", "location": "NH-16 Section", "cost_inr": 140},
+                      {"name": "Panchvati Colony Toll Plaza", "location": "NH-516C, Visakhapatnam", "cost_inr": 130}
+                    ];
+                  } else if (isMumbaiPune) {
+                    tollPlazasList = [
+                      {"name": "Khalapur Toll Plaza", "location": "Mumbai-Pune Expressway", "cost_inr": 320},
+                      {"name": "Talegaon Toll Plaza", "location": "Mumbai-Pune Expressway", "cost_inr": 280},
+                      {"name": "Pune Entrance Toll Gate", "location": "Pune Bypass", "cost_inr": 150}
+                    ];
+                  } else if (isDelhiHyd) {
+                    tollPlazasList = [
+                      {"name": "Yamuna Expressway Toll Gate", "location": "Agra-Mathura Section", "cost_inr": 650},
+                      {"name": "Gwalior Bypass Toll Plaza", "location": "NH44 Mile 320", "cost_inr": 380},
+                      {"name": "Babina Toll Plaza", "location": "Jhansi-Lalitpur Section", "cost_inr": 320},
+                      {"name": "Nagpur Outer Ring Toll Plaza", "location": "NH44 Nagpur Hub", "cost_inr": 540},
+                      {"name": "Pimpalgaon Border Toll Plaza", "location": "Maharashtra-Telangana Border", "cost_inr": 480},
+                      {"name": "Medchal Outer Toll Plaza", "location": "Hyderabad Entrance", "cost_inr": 480}
+                    ];
+                  } else {
+                    tollPlazasList = [
+                      {"name": `${originName} Bypass Toll Gate`, "location": "National Highway Section", "cost_inr": 380},
+                      {"name": `${destName} Entrance Toll Plaza`, "location": "National Highway Section", "cost_inr": 420}
+                    ];
+                  }
+                } else if (selectedRouteId === 'fastest_route') {
+                  if (isVijayawadaToVizag) {
+                    tollPlazasList = [
+                      {"name": "Kalaparru Bypass Toll", "location": "NH-16 Section", "cost_inr": 150},
+                      {"name": "Veeravalli Expressway Toll", "location": "NH-16 Section", "cost_inr": 160},
+                      {"name": "Rajahmundry Ring Toll", "location": "NH-16 Bypass", "cost_inr": 140},
+                      {"name": "Kovvuru Bridge Toll", "location": "Godavari Fourth Bridge", "cost_inr": 120},
+                      {"name": "Tuni Express Bypass", "location": "NH-16 Section", "cost_inr": 180},
+                      {"name": "Visakhapatnam Port Express", "location": "NH-516C, Visakhapatnam", "cost_inr": 200}
+                    ];
+                  } else if (isMumbaiPune) {
+                    tollPlazasList = [
+                      {"name": "Mumbai Port Trust Expressway Toll", "location": "Port Trust Road", "cost_inr": 420},
+                      {"name": "Khalapur Express Toll Plaza", "location": "Expressway Section", "cost_inr": 380},
+                      {"name": "Talegaon Express Toll Plaza", "location": "Expressway Section", "cost_inr": 320},
+                      {"name": "Pune Ring Express Gate", "location": "Pune Bypass", "cost_inr": 180}
+                    ];
+                  } else if (isDelhiHyd) {
+                    tollPlazasList = [
+                      {"name": "Yamuna Expressway Toll Gate", "location": "Agra-Mathura Section", "cost_inr": 650},
+                      {"name": "Agra-Lucknow Expressway Plaza", "location": "Expressway Section", "cost_inr": 780},
+                      {"name": "Jhansi Link Expressway Gate", "location": "Expressway Section", "cost_inr": 420},
+                      {"name": "Nagpur Outer Ring Expressway", "location": "NH44 Nagpur Hub", "cost_inr": 680},
+                      {"name": "Pimpalgaon Bypass Toll", "location": "Maharashtra-Telangana Border", "cost_inr": 520},
+                      {"name": "Medchal Express Toll Gate", "location": "Hyderabad Entrance", "cost_inr": 650}
+                    ];
+                  } else {
+                    tollPlazasList = [
+                      {"name": `${originName} Port Expressway Toll`, "location": "Expressway Corridor", "cost_inr": 450},
+                      {"name": "Midway Express Highway Toll", "location": "Expressway Corridor", "cost_inr": 500},
+                      {"name": `${destName} Outer Ring Toll Gate`, "location": "Expressway Corridor", "cost_inr": 480}
+                    ];
+                  }
+                } else { // lowest_cost_route (Economy)
+                  if (isVijayawadaToVizag) {
+                    tollPlazasList = [
+                      {"name": "Eluru Local NH-Pass", "location": "State Highway Bypass", "cost_inr": 80},
+                      {"name": "Rajahmundry Local Pass", "location": "State Highway Bypass", "cost_inr": 70},
+                      {"name": "Tuni Town Toll", "location": "State Highway Bypass", "cost_inr": 90}
+                    ];
+                  } else if (isMumbaiPune) {
+                    tollPlazasList = [
+                      {"name": "Panvel Old Highway Gate", "location": "Old Highway NH4", "cost_inr": 80},
+                      {"name": "Khopoli Old Highway Gate", "location": "Old Highway NH4", "cost_inr": 90}
+                    ];
+                  } else if (isDelhiHyd) {
+                    tollPlazasList = [
+                      {"name": "Gwalior Local Bypass", "location": "State Highway Bypass", "cost_inr": 180},
+                      {"name": "Jhansi Local Gate", "location": "State Highway Bypass", "cost_inr": 150},
+                      {"name": "Nagpur Local Ring", "location": "State Highway Bypass", "cost_inr": 250},
+                      {"name": "Adilabad Local Toll", "location": "State Highway Bypass", "cost_inr": 220}
+                    ];
+                  } else {
+                    tollPlazasList = [
+                      {"name": "Local State Highway Bypass Gate", "location": "State Highway Section", "cost_inr": 180}
+                    ];
+                  }
+                }
+
                 // Bezier coordinates logic for live lorry movement
                 const tVal = mapProgress / 100;
                 const p0 = { x: 40, y: 50 };
@@ -748,30 +952,6 @@ export default function VoiceAssistantModal({ isOpen, onClose, initialQuery = ''
                   ? { x: 180, y: 85 } 
                   : { x: 180, y: 50 };
                 const truckPos = getBezierPoint(tVal, p0, p1, p2);
-
-                const isVijayawadaToVizag = 
-                  (response.card_data.origin?.toLowerCase().includes('vijayawada') && (response.card_data.destination?.toLowerCase().includes('visakhapatnam') || response.card_data.destination?.toLowerCase().includes('vizag'))) ||
-                  ((response.card_data.origin?.toLowerCase().includes('visakhapatnam') || response.card_data.origin?.toLowerCase().includes('vizag')) && response.card_data.destination?.toLowerCase().includes('vijayawada'));
-
-                const tollPlazasList = response.card_data.toll_plazas && response.card_data.toll_plazas.length > 0
-                  ? response.card_data.toll_plazas
-                  : (isVijayawadaToVizag 
-                      ? [
-                          {"name": "Kalaparru Toll Plaza", "location": "NH-16 Section", "cost_inr": 120},
-                          {"name": "Veeravalli Toll Plaza", "location": "NH-16 Section", "cost_inr": 110},
-                          {"name": "Kovvuru Toll Plaza", "location": "Godavari Fourth Bridge", "cost_inr": 100},
-                          {"name": "Krishnavaram Toll Plaza", "location": "NH-16 Section", "cost_inr": 120},
-                          {"name": "Vempadu Toll Plaza", "location": "NH-16 Section", "cost_inr": 140},
-                          {"name": "Panchvati Colony Toll Plaza", "location": "NH-516C, Visakhapatnam", "cost_inr": 130}
-                        ]
-                      : [
-                          {"name": "Yamuna Expressway Toll Gate", "location": "Agra-Mathura Section", "cost_inr": 650},
-                          {"name": "Gwalior Bypass Toll Plaza", "location": "NH44 Mile 320", "cost_inr": 380},
-                          {"name": "Babina Toll Plaza", "location": "Jhansi-Lalitpur Section", "cost_inr": 320},
-                          {"name": "Nagpur Outer Ring Toll Plaza", "location": "NH44 Nagpur Hub", "cost_inr": 540},
-                          {"name": "Pimpalgaon Border Toll Plaza", "location": "Maharashtra-Telangana Border", "cost_inr": 480},
-                          {"name": "Medchal Outer Toll Plaza", "location": "Hyderabad Entrance", "cost_inr": 480}
-                        ]);
 
                 return (
                   <div
