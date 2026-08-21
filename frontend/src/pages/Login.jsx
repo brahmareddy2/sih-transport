@@ -251,8 +251,8 @@ export default function Login() {
 
         {/* LOGIN FLOW */}
         <>
-          {/* Quick Demo Logins (enabled by default for SIH demo) */}
-          {(import.meta.env.VITE_ENABLE_DEV_LOGIN === 'true' || true) && (
+          {/* Quick Demo Logins */}
+          {import.meta.env.VITE_ENABLE_DEV_LOGIN === 'true' && (
             <>
               <div style={{ marginBottom: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>

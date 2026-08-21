@@ -46,8 +46,8 @@ const useAuthStore = create((set, get) => ({
       })
       return { success: true, role: data.user.role }
     } catch (err) {
-      // Fallback for Vercel preview or local dev credentials (enabled by default for SIH demo robustness)
-      if (import.meta.env.VITE_ENABLE_DEV_LOGIN === 'true' || true) {
+      // Fallback for Vercel preview or local dev credentials
+      if (import.meta.env.VITE_ENABLE_DEV_LOGIN === 'true') {
         const normalizedEmail = (email || '').trim().toLowerCase()
         const demoAccount = DEMO_ACCOUNTS[normalizedEmail]
         if (demoAccount) {
